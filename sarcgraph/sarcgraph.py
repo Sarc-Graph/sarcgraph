@@ -3,28 +3,31 @@ import numpy as np
 import pandas as pd
 import trackpy as tp
 import cv2
-from skimage.filters import threshold_otsu
+import pickle
+import glob
+import skvideo.io
+import skvideo.utils
+import time
+
+from skimage.filters import laplace, gaussian, threshold_otsu
 from skimage import measure
 from scipy import ndimage
 from scipy.spatial import distance_matrix
 from collections import Counter
-import pickle
-import glob
 from pathlib import Path
 from scipy.sparse.csgraph import connected_components
-
-import time
 
 ##########################################################################################
 # Input info and set up 
 ##########################################################################################
 class SarcGraph:
-	def __init__(self, folder_name, gaussian_filter_size=1, tp_depth=4, fully_tracked_frame_ratio=0.75):
-		self.folder_name = folder_name
-		self.gaussian_filter_size = gaussian_filter_size
-		self.tp_depth = tp_depth
-		self.frame_threshod = fully_tracked_frame_ratio
-	
+	def __init__(self, output_dir=None, input_type='video'): #tp_depth=4, fully_tracked_frame_ratio=0.75
+		if output_dir == None:
+			raise ValueError('Output directory should be specified.')
+		self.output_dir = output_dir
+		self.input_type = input_type
+
+		"""
 		frames_path = f'ALL_MOVIES_MATRICES/{self.folder_name}/*'
 		self.num_frames = len(glob.glob(f'{frames_path}.npy'))
 		if self.num_frames == 0:
@@ -38,21 +41,33 @@ class SarcGraph:
 		Path(self.out_sarc).mkdir(parents=True, exist_ok=True)
 		Path(self.out_track).mkdir(parents=True, exist_ok=True)
 
-		self.tracked_discs_file = f'{self.out_track}/tracking_results_zdisks.txt'
-	
-	##########################################################################################
-	# Helper functions
-	##########################################################################################
-	def get_frame_name(self, frame_num):
-		if frame_num < 10: file_root = f'frame-000{frame_num}'
-		elif frame_num < 100: file_root = f'frame-00{frame_num}'
-		else: file_root = f'frame-0{frame_num}'
+		self.tracked_discs_file = f'{self.out_track}/tracking_results_zdiscs.txt'
+		"""
 
-		return file_root
+	##########################################################################################
+	# Utilities
+	##########################################################################################
+	def data_loader(self, input_path):
+		return skvideo.io.vread(input_path)
+
+	def _to_gray(self, raw_data):
+		return skvideo.utils.rgb2gray(raw_data)
+
+	def save_frames(self, data, data_type):
+		Path(f'{self.output_dir}/{data_type}/').mkdir(parents=True, exist_ok=True)
+		for i, frame in enumerate(data):
+			np.save(f'{self.output_dir}/{data_type}/frame-' + f'{i}'.zfill(5) + '.npy', frame)
+
+	def filter_data(self, data):
+		filtered_data = np.zeros(data.shape[:-1])
+		for i, frame in enumerate(data[:,:,:,0]):
+			laplacian = laplace(frame)
+			filtered_data[i] = gaussian(laplacian)
+		return filtered_data
 
 	##########################################################################################
 	def numpy2pandas(self, frame):
-		"""Create a pandas dataframe that captures the z-disks."""
+		"""Create a pandas dataframe that captures the z-discs."""
 		file_root = self.get_frame_name(frame)
 		filename = f'ALL_MOVIES_PROCESSED/{self.folder_name}/segmented_bands/{file_root}_bands.txt'
 		numpy_file = np.loadtxt(filename)
@@ -69,44 +84,8 @@ class SarcGraph:
 		return pd_dataframe
 
 	##########################################################################################
-	def frame2array(self, frame_num):
-		"""Get the npy matrix for a frame of the movie."""
-		external_folder_name = f'ALL_MOVIES_MATRICES/{self.folder_name}/'
-		
-		file_root = self.get_frame_name(frame_num)
-		root_npy = f'{external_folder_name}{file_root}.npy'
-		root_txt = f'{external_folder_name}{file_root}.txt'
-		try:
-			raw_img = np.load(root_npy)
-		except:
-			raw_img = np.loadtxt(root_txt)
-
-		return file_root, raw_img
-
-	##########################################################################################
-	def process_band(self, cont):
-		"""Process the contour and return important properties. Units of pixels."""
-		# coordinate 1 of center 
-		center_idx1 = np.mean(cont[:,0])
-		# coordinate 2 of center 
-		center_idx2 = np.mean(cont[:,1])
-		# find the maximum distance between points in the contour and identify the coordinates
-		dist_mat = distance_matrix(cont,cont)
-
-		args = np.unravel_index(dist_mat.argmax(), dist_mat.shape)
-		idx_kk = args[0]
-		idx_jj = args[1]
-		# identify end_1 and end_2 -- coordinates of the ends 
-		end_1x, end_1y = cont[idx_kk,0], cont[idx_kk,1]
-		end_2x, end_2y = cont[idx_jj,0], cont[idx_jj,1]
-
-		info = np.array([[center_idx1, center_idx2, end_1x, end_1y, end_2x, end_2y]])
-
-		return info
-
-	##########################################################################################
 	def compute_length_from_contours(self, cont1, cont2):
-		"""Compute the length between two z disks from two contours"""
+		"""Compute the length between two z discs from two contours"""
 		c1_x = np.mean(cont1[:,0])
 		c1_y = np.mean(cont1[:,1])
 		c2_x = np.mean(cont2[:,0])
@@ -143,47 +122,53 @@ class SarcGraph:
 
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
-	# Segment z-disks 
+	# Segmentation
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
 	##########################################################################################
-	def segment_zdiscs(self):
-		start_time = time.time()
-		for frame in range(self.num_frames):
-			file_root, raw_img = self.frame2array(frame)
-		
-			# compute the laplacian of the image and then use that to find the contours
-			laplacian = cv2.Laplacian(raw_img, cv2.CV_64F)
-			laplacian = ndimage.gaussian_filter(laplacian, self.gaussian_filter_size)
-			contour_thresh = threshold_otsu(laplacian)
-			contour_image = laplacian
-			contours =  measure.find_contours(contour_image, contour_thresh)
-		
-			# create a list of all contours large enough (in pixels) to surround an area
-			contour_list = [] 
-			for contour in contours:
-				if contour.shape[0] >= 8:
-					contour_list.append(contour)
-			
-			# compute properties of each contour i.e. z disk
-			num_countors = len(contour_list)
-			info = np.zeros((num_countors, 6))
-			for i, contour in enumerate(contour_list):
-				info[i] = self.process_band(contour)
+	def preprocessing(self, input_path):
+		raw_data = self.data_loader(input_path)
+		raw_data_gray = self._to_gray(raw_data)
+		filtered_data = self.filter_data(raw_data_gray)
+		self.save_frames(raw_data_gray, data_type='raw_data_gray_scale')
+		self.save_frames(filtered_data, data_type='filtered_data')
+		return filtered_data
 
-			# save info per band: center x, center y, end_1x,y, end_2 x,y
-			np.savetxt(f'{self.out_bands}/{file_root}_bands.txt', info)
-		
-			# save contour_list --> pickle the file to come back to later 
-			with open(f'{self.out_bands}/{file_root}_raw_contours.pkl', 'wb') as f:
-				pickle.dump(contour_list, f)
-		print("--- %s seconds ---" % (time.time() - start_time))
+	def zdisc_detection(self, filtered_frames):
+		length_checker = np.vectorize(len)
+		for i, frame in enumerate(filtered_frames):
+			contour_thresh = threshold_otsu(frame)
+			contours = measure.find_contours(frame, contour_thresh)
+			contours_size = length_checker(contours)
+			valid_contours = np.delete(contours, np.where(contours_size > 8)[0])
+		self.save_frames(data=valid_contours, data_type='contours')
+		return valid_contours
+	
+	def zdisc_processing(self, contour):
+		"""Process the contour and return important properties. Units of pixels."""
+		# coordinates of the center of a contour
+		center_coords = np.mean(contour, axis=0)
+		# find zdisc direction by matching furthest points on the contour
+		dist_mat = distance_matrix(contour, contour)
+		indices = np.unravel_index(dist_mat.argmax(), dist_mat.shape)
+		# coordinates of the two points on the contour with maximum distance
+		p1, p2 = contour[indices[0]], contour[indices[1]]
+		return np.hstack((center_coords, p1, p2))
 
+	def segmentation(self, input_path):
+		filtered_data = self.preprocessing(input_path)
+		contours = self.zdisc_detection(filtered_data)
+		zdiscs_processed = np.zeros((len(contours), 6))
+		for i, contour in enumerate(contours):
+			zdiscs_processed[i] = self.zdisc_processing(contour)
+		np.save(f'{self.output_dir}/zdiscs-info.npy', zdiscs_processed)
+
+"""
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
-	# Track z-disks 
+	# Track z-discs 
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
 	##########################################################################################
-	# load all of the segmented z-disks into a features array 
+	# load all of the segmented z-discs into a features array 
 	def track_zdiscs(self):
 		frames = []
 		for frame_num in range(self.num_frames):
@@ -217,7 +202,7 @@ class SarcGraph:
 		save_data[:,7] = end2_idx1
 		save_data[:,8] = end2_idx2
 
-		np.savetxt(f'{self.out_track}/tracking_results_zdisks.txt', save_data)
+		np.savetxt(f'{self.out_track}/tracking_results_zdiscs.txt', save_data)
 
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
@@ -257,3 +242,4 @@ class SarcGraph:
 				zdiscs[:,1] = self.fully_tracked_label
 				self.fully_tracked_zdiscs = np.vstack((self.fully_tracked_zdiscs, zdiscs))
 				self.fully_tracked_label += 1
+"""
