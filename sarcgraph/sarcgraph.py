@@ -1,24 +1,20 @@
-import matplotlib.pyplot as plt
+import shutil
 import numpy as np
 import pandas as pd
 import trackpy as tp
-import cv2
-import pickle
-import glob
+
 import skvideo.io
+import skimage.io
 import skvideo.utils
-import time
 
 from skimage.filters import laplace, gaussian, threshold_otsu
 from skimage import measure
-from scipy import ndimage
 from scipy.spatial import distance_matrix
 from collections import Counter
 from pathlib import Path
-from scipy.sparse.csgraph import connected_components
 
 ##########################################################################################
-# Input info and set up 
+# Input info and sest up 
 ##########################################################################################
 class SarcGraph:
 	def __init__(self, output_dir=None, input_type='video'): #tp_depth=4, fully_tracked_frame_ratio=0.75
@@ -48,26 +44,38 @@ class SarcGraph:
 	# Utilities
 	##########################################################################################
 	def data_loader(self, input_path):
-		return skvideo.io.vread(input_path)
-
-	def _to_gray(self, raw_data):
-		return skvideo.utils.rgb2gray(raw_data)
-
-	def save_frames(self, data, data_type):
-		Path(f'{self.output_dir}/{data_type}/').mkdir(parents=True, exist_ok=True)
+		if self.input_type == 'video':
+			data = skvideo.io.vread(input_path)
+			if data.shape[0] > 1:
+				return data
+		return skimage.io.imread(input_path)
+		
+	def _to_gray(self, data):
+		return skvideo.utils.rgb2gray(data)
+	
+	def save_frames(self, data, data_name, del_existing=True):
+		if del_existing:
+			try:
+				shutil.rmtree(f'{self.output_dir}')
+			except:
+				pass
+		Path(f'{self.output_dir}/{data_name}/').mkdir(parents=True, exist_ok=True)
 		for i, frame in enumerate(data):
-			np.save(f'{self.output_dir}/{data_type}/frame-' + f'{i}'.zfill(5) + '.npy', frame)
+			np.save(f'{self.output_dir}/{data_name}/frame-' + f'{i}'.zfill(5) + '.npy', frame)
 
 	def filter_data(self, data):
+		if len(data.shape) != 4 or data.shape[-1] != 1:
+			raise ValueError(f"Passed array ({data.shape}) is not of the right shape (frames, dim_1, dim_2, channels=1)")
 		filtered_data = np.zeros(data.shape[:-1])
 		for i, frame in enumerate(data[:,:,:,0]):
 			laplacian = laplace(frame)
 			filtered_data[i] = gaussian(laplacian)
 		return filtered_data
 
+	"""
 	##########################################################################################
 	def numpy2pandas(self, frame):
-		"""Create a pandas dataframe that captures the z-discs."""
+		"Create a pandas dataframe that captures the z-discs."
 		file_root = self.get_frame_name(frame)
 		filename = f'ALL_MOVIES_PROCESSED/{self.folder_name}/segmented_bands/{file_root}_bands.txt'
 		numpy_file = np.loadtxt(filename)
@@ -85,7 +93,7 @@ class SarcGraph:
 
 	##########################################################################################
 	def compute_length_from_contours(self, cont1, cont2):
-		"""Compute the length between two z discs from two contours"""
+		"Compute the length between two z discs from two contours"
 		c1_x = np.mean(cont1[:,0])
 		c1_y = np.mean(cont1[:,1])
 		c2_x = np.mean(cont2[:,0])
@@ -119,6 +127,7 @@ class SarcGraph:
 				self.partially_tracked_zdiscs = np.vstack((self.partially_tracked_zdiscs, zdiscs))
 				self.partially_tracked_clusters = np.vstack((self.partially_tracked_clusters, np.mean(zdiscs[:,(2,3)], axis=0)))
 				self.partially_tracked_label += 1
+	"""
 
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
@@ -129,8 +138,8 @@ class SarcGraph:
 		raw_data = self.data_loader(input_path)
 		raw_data_gray = self._to_gray(raw_data)
 		filtered_data = self.filter_data(raw_data_gray)
-		self.save_frames(raw_data_gray, data_type='raw_data_gray_scale')
-		self.save_frames(filtered_data, data_type='filtered_data')
+		self.save_frames(raw_data_gray, data_name='raw_data_gray_scale')
+		self.save_frames(filtered_data, data_name='filtered_data')
 		return filtered_data
 
 	def zdisc_detection(self, filtered_frames):
@@ -139,8 +148,8 @@ class SarcGraph:
 			contour_thresh = threshold_otsu(frame)
 			contours = measure.find_contours(frame, contour_thresh)
 			contours_size = length_checker(contours)
-			valid_contours = np.delete(contours, np.where(contours_size > 8)[0])
-		self.save_frames(data=valid_contours, data_type='contours')
+			valid_contours = np.delete(contours, np.where(contours_size < 8)[0])
+		self.save_frames(data=valid_contours, data_name='contours')
 		return valid_contours
 	
 	def zdisc_processing(self, contour):
