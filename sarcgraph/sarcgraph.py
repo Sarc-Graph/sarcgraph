@@ -17,7 +17,7 @@ from pathlib import Path
 # Input info and sest up 
 ##########################################################################################
 class SarcGraph:
-	def __init__(self, output_dir=None, input_type='video'): #tp_depth=4, fully_tracked_frame_ratio=0.75
+	def __init__(self, output_dir=None, input_type='video'): #, fully_tracked_frame_ratio=0.75
 		if output_dir == None:
 			raise ValueError('Output directory should be specified.')
 		self.output_dir = output_dir
@@ -56,12 +56,12 @@ class SarcGraph:
 	def save_frames(self, data, data_name, del_existing=True):
 		if del_existing:
 			try:
-				shutil.rmtree(f'{self.output_dir}')
+				shutil.rmtree(f'./{self.output_dir}')
 			except:
 				pass
-		Path(f'{self.output_dir}/{data_name}/').mkdir(parents=True, exist_ok=True)
+		Path('./' + f'{self.output_dir}/{data_name}/').mkdir(parents=True, exist_ok=True)
 		for i, frame in enumerate(data):
-			np.save(f'{self.output_dir}/{data_name}/frame-' + f'{i}'.zfill(5) + '.npy', frame)
+			np.save('./' + f'{self.output_dir}/{data_name}/frame-' + f'{i}'.zfill(5) + '.npy', frame)
 
 	def filter_data(self, data):
 		if len(data.shape) != 4 or data.shape[-1] != 1:
@@ -71,6 +71,19 @@ class SarcGraph:
 			laplacian = laplace(frame)
 			filtered_data[i] = gaussian(laplacian)
 		return filtered_data
+
+	def zdisc_info_to_pandas(self, zdiscs_info_all):
+		"Create a pandas dataframe that captures the z-discs."
+		data_frames = []
+		for i, zdiscs_info_frame in enumerate(zdiscs_info_all):
+			p1 = zdiscs_info_frame[:,2:4]
+			p2 = zdiscs_info_frame[:,4:6]
+			fake_mass = 11 * np.sum((p1-p2)**2, axis=1)**2
+			frame_id = np.ones((zdiscs_info_frame,1))
+			zdisc_id_in_frame = np.arange(0, len(zdiscs_info_frame), 1)
+			zdiscs_info_frame_extended = np.hstack((frame_id, zdisc_id_in_frame, zdiscs_info_frame, fake_mass))
+			data_frames.append(pd.DataFrame(zdiscs_info_frame_extended, columns=['frame_id', 'zdisc_id', 'x', 'y', 'p1_x', 'p1_y', 'p2_x', 'p2_y', 'mass']))		
+		return pd.concat(data_frames)
 
 	"""
 	##########################################################################################
@@ -139,16 +152,19 @@ class SarcGraph:
 		raw_data_gray = self._to_gray(raw_data)
 		filtered_data = self.filter_data(raw_data_gray)
 		self.save_frames(raw_data_gray, data_name='raw_data_gray_scale')
+		print('fuck you!')
 		self.save_frames(filtered_data, data_name='filtered_data')
+		print('fuck you too!')
 		return filtered_data
 
 	def zdisc_detection(self, filtered_frames):
 		length_checker = np.vectorize(len)
+		valid_contours = []
 		for i, frame in enumerate(filtered_frames):
 			contour_thresh = threshold_otsu(frame)
 			contours = measure.find_contours(frame, contour_thresh)
 			contours_size = length_checker(contours)
-			valid_contours = np.delete(contours, np.where(contours_size < 8)[0])
+			valid_contours.append(np.delete(contours, np.where(contours_size < 8)[0]))
 		self.save_frames(data=valid_contours, data_name='contours')
 		return valid_contours
 	
@@ -165,20 +181,40 @@ class SarcGraph:
 
 	def segmentation(self, input_path):
 		filtered_data = self.preprocessing(input_path)
-		contours = self.zdisc_detection(filtered_data)
-		zdiscs_processed = np.zeros((len(contours), 6))
-		for i, contour in enumerate(contours):
-			zdiscs_processed[i] = self.zdisc_processing(contour)
-		np.save(f'{self.output_dir}/zdiscs-info.npy', zdiscs_processed)
+		contours_all = self.zdisc_detection(filtered_data)
+		zdiscs_processed_all = []
+		for contours_frame in contours_all:
+			zdiscs_processed_frame = np.zeros((len(contours_frame), 6))
+			for i, contour in enumerate(contours_frame):
+				zdiscs_processed_frame[i] = self.zdisc_processing(contour)
+			zdiscs_processed_all.append(zdiscs_processed_frame)
+		self.save_frames(data=zdiscs_processed_all, data_name='zdiscs-info')
+		return zdiscs_processed_all
 
-"""
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
 	# Track z-discs 
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
 	##########################################################################################
-	# load all of the segmented z-discs into a features array 
-	def track_zdiscs(self):
+	def zdisc_tracking(self, tp_depth=4, input_path=None, zdiscs_info=None):
+		if self.input_path == 'images':
+			print('Cannot perform tracking on a single frame image.')
+			return None
+		
+		if input_path is None and zdiscs_info is None:
+			raise ValueError("Either input_path to the original video/image or a numpy array of frame by frame zdiscs_info should be specified..")
+		elif zdiscs_info:
+			pass
+		else:
+			zdiscs_info = self.segmentation(input_path)
+		
+		features = self.zdisc_info_to_pandas(zdiscs_info)
+		# Run tracking --> using the trackpy package 
+		# http://soft-matter.github.io/trackpy/v0.3.0/tutorial/prediction.html
+		t = tp.link_df(features, tp_depth, memory=int(len(zdiscs_info))) 
+		t1 = tp.filter_stubs(t, int(len(zdiscs_info)*.10))
+		
+	def zdisc_tracking(self, tp_depth=4):
 		frames = []
 		for frame_num in range(self.num_frames):
 			frames.append(self.numpy2pandas(frame_num))
@@ -186,19 +222,19 @@ class SarcGraph:
 		features = pd.concat(frames)
 		# Run tracking --> using the trackpy package 
 		# http://soft-matter.github.io/trackpy/v0.3.0/tutorial/prediction.html
-		t = tp.link_df(features, self.tp_depth, memory=int(self.num_frames)) 
+		t = tp.link_df(features, tp_depth, memory=int()) 
 		t1 = tp.filter_stubs(t, int(self.num_frames*.10))
 		
 		# Extract the results from tracking 
-		frame = t1.frame.to_numpy()
+		frame = t1.frame_id.to_numpy()
 		xall = t1.x.to_numpy()
 		yall = t1.y.to_numpy()
-		orig_idx = t1.orig_idx.to_numpy()
+		orig_idx = t1.zdisc_id.to_numpy()
 		particle = t1.particle.to_numpy()
-		end1_idx1 = t1.end1_idx1.to_numpy()
-		end1_idx2 = t1.end1_idx2.to_numpy()
-		end2_idx1 = t1.end2_idx1.to_numpy()
-		end2_idx2 = t1.end2_idx2.to_numpy()
+		end1_idx1 = t1.p1_x.to_numpy()
+		end1_idx2 = t1.p1_y.to_numpy()
+		end2_idx1 = t1.p2_x.to_numpy()
+		end2_idx2 = t1.p2_y.to_numpy()
 
 		save_data = np.zeros((frame.shape[0],9))
 		save_data[:,0] = frame
@@ -213,6 +249,7 @@ class SarcGraph:
 
 		np.savetxt(f'{self.out_track}/tracking_results_zdiscs.txt', save_data)
 
+	"""
 	##########################################################################################
 	# ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ # ~ #
 	# Merge tracked z-discs 
