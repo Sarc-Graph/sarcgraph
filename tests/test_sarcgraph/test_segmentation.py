@@ -10,5 +10,5 @@ def test_detected_zdisc_num():
 
 def test_segmentation_frames_num():
     sg = SarcGraph(output_dir='test-output', input_type='video')
-    zdiscs_info = sg.segmentation(input_path='samples/sample_0.avi')
+    zdiscs_info = sg.zdisc_segmentation(input_path='samples/sample_0.avi')
     assert len(zdiscs_info) == 80
