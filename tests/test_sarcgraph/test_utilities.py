@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from sarcgraph.sarcgraph import SarcGraph
+from src.sarcgraph import SarcGraph
 
 def test_output_dir_not_specified():
     with pytest.raises(Exception):

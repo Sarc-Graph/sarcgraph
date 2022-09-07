@@ -17,11 +17,23 @@ jobs:
 
     - name: Install Python dependencies
       run: |
+        sudo apt install -y $(grep -o ^[^#][[:alnum:]-]* "packages.list")
         python3 -m pip install --upgrade pip
         pip3 install -r requirements.txt
 
     - name: Test with pytest
       run: |
         pytest --exitfirst --verbose --failed-first \
-    --cov=. --cov-report html
-          
+        --cov=tests --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        directory: ./coverage/reports/
+        fail_ci_if_error: true
+        files: ./coverage.xml # optional
+        flags: unittests # optional
+        name: codecov-umbrella # optional
+        path_to_write_report: ./coverage/codecov_report.txt
+        verbose: true

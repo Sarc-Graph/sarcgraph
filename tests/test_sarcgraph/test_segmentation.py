@@ -1,4 +1,4 @@
-from sarcgraph.sarcgraph import SarcGraph
+from src.sarcgraph import SarcGraph
 
 
 def test_detected_zdisc_num():
