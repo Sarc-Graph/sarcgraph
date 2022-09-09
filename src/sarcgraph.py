@@ -93,7 +93,6 @@ class SarcGraph:
         if del_existing:
             try:
                 shutil.rmtree(output_path)
-                print("Removing existing files in this directory ...")
             except Exception:
                 pass
         Path(output_path).mkdir(parents=True, exist_ok=True)
@@ -308,8 +307,10 @@ class SarcGraph:
     def zdisc_clusters_to_graph(self, zdisc_clusters):
         # finding K(=3) nearest clusters to each cluster
         neigh = NearestNeighbors(n_neighbors=2)
-        neigh.fit(zdisc_clusters)
-        nearestNeighbors = neigh.kneighbors(zdisc_clusters, 4, return_distance=False)
+        neigh.fit(zdisc_clusters[:, 0:2])
+        nearestNeighbors = neigh.kneighbors(
+            zdisc_clusters[:, 0:2], 4, return_distance=False
+        )
 
         # create a graph with zdiscs as nodes and connections between a zdisc and its
         # neighbors as edges
@@ -322,7 +323,7 @@ class SarcGraph:
             i: zdisc_info[0:2] for i, zdisc_info in enumerate(zdisc_clusters)
         }
         nodes_particle_dict = {
-            i: zdisc_info[-1] for i, zdisc_info in enumerate(zdisc_clusters)
+            j: zdisc_info[-1] for j, zdisc_info in enumerate(zdisc_clusters)
         }
 
         nx.set_node_attributes(G, values=nodes_pos_dict, name="pos")
@@ -338,7 +339,7 @@ class SarcGraph:
         return G
 
     def score_cluster_connections(
-        self, G, c_avg_length=1, c_angle=0.5, c_diff_length=1, l_avg=12.0
+        self, G, c_avg_length=1, c_angle=1, c_diff_length=1, l_avg=12.0
     ):
         # scoring edges of the graph
         edges_attr_dict = {}
@@ -378,7 +379,9 @@ class SarcGraph:
         nx.set_edge_attributes(G, values=edges_attr_dict, name="score")
         return G
 
-    def find_valid_cluster_connections(self, G, score_threshold=1, angle_threshold=1.4):
+    def find_valid_cluster_connections(
+        self, G, score_threshold=0.01, angle_threshold=1.2
+    ):
         # graph pruning (visit all nodes):
         # for each node increase the validity of up to 2 most likely connections by 1
         nx.set_edge_attributes(G, values=0, name="validity")
@@ -452,7 +455,6 @@ class SarcGraph:
 
         frame_num = np.max(fully_tracked_zdiscs.frame)
         sarc_num = len(sarcs_zdiscs_ids)
-        print(frame_num, sarc_num)
         sarc_info = np.zeros((5, sarc_num, frame_num))
         for i, sarc in enumerate(sarcs_zdiscs_ids):
             for frame in range(frame_num):
@@ -469,27 +471,36 @@ class SarcGraph:
                         fully_tracked_zdiscs.frame == frame,
                     )
                 )
-                zdisc_2 = fully_tracked_zdiscs.iloc[zdisc_2_index]
-                sarc_info[0, i, frame] = np.mean(zdisc_1.x.values + zdisc_2.x.values)
-                sarc_info[1, i, frame] = np.mean(zdisc_1.y.values + zdisc_2.y.values)
-                sarc_info[2, i, frame] = np.linalg.norm(
-                    zdisc_1[["x", "y"]].values - zdisc_2[["x", "y"]].values
-                )
-                zdisc_1_width = np.linalg.norm(
-                    zdisc_1[["p1_x", "p1_y"]].values - zdisc_1[["p2_x", "p2_y"]].values
-                )
-                zdisc_2_width = np.linalg.norm(
-                    zdisc_2[["p1_x", "p1_y"]].values - zdisc_2[["p2_x", "p2_y"]].values
-                )
-                sarc_info[3, i, frame] = np.mean(zdisc_1_width + zdisc_2_width)
-                sarc_angle = np.arctan2(
-                    zdisc_2.y.values - zdisc_1.y.values,
-                    zdisc_2.x.values - zdisc_1.x.values,
-                )
-                if sarc_angle < 0:
-                    sarc_angle += np.pi
-                sarc_info[4, i, frame] = sarc_angle
+                zdisc_2 = fully_tracked_zdiscs.iloc[zdisc_2_index].replace("", np.nan)
+                if zdisc_1.empty or zdisc_2.empty:
+                    sarc_info[:, i, frame] = np.nan
+                else:
+                    sarc_info[0, i, frame] = np.mean(
+                        zdisc_1.x.values + zdisc_2.x.values
+                    )
+                    sarc_info[1, i, frame] = np.mean(
+                        zdisc_1.y.values + zdisc_2.y.values
+                    )
+                    sarc_info[2, i, frame] = np.linalg.norm(
+                        zdisc_1[["x", "y"]].values - zdisc_2[["x", "y"]].values
+                    )
+                    zdisc_1_width = np.linalg.norm(
+                        zdisc_1[["p1_x", "p1_y"]].values
+                        - zdisc_1[["p2_x", "p2_y"]].values
+                    )
+                    zdisc_2_width = np.linalg.norm(
+                        zdisc_2[["p1_x", "p1_y"]].values
+                        - zdisc_2[["p2_x", "p2_y"]].values
+                    )
+                    sarc_info[3, i, frame] = np.mean(zdisc_1_width + zdisc_2_width)
+                    sarc_angle = np.arctan2(
+                        zdisc_2.y.values - zdisc_1.y.values,
+                        zdisc_2.x.values - zdisc_1.x.values,
+                    )
+                    if sarc_angle < 0:
+                        sarc_angle += np.pi
+                    sarc_info[4, i, frame] = sarc_angle
 
-        self.save_frames(data=sarc_info, data_name="sarcomeres-info")
+        np.save(f"{self.output_dir}/sarcomeres-info.npy", sarc_info)
 
-        return myofibrils, sarc_info
+        return myofibrils  # , sarc_info

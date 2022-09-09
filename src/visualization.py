@@ -44,6 +44,7 @@ class SarcGraphTools:
         """
 
         ax = plt.axes()
+        ax.set_aspect("equal")
         ax.imshow(raw_img[:, :, 0], cmap=plt.cm.gray)
         ax.set_title(f"{len(contour_list)} z-disks found in frame {frame}")
         for contour in contour_list:
