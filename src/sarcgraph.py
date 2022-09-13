@@ -7,7 +7,6 @@
 # Author: Saeed Mohammadzadeh                                    #
 # Email: saeedmhz@bu.edu                                         #
 ##################################################################
-import shutil
 import numpy as np
 import pandas as pd
 import trackpy as tp
@@ -72,34 +71,36 @@ class SarcGraph:
         -------
             A numpy array containing all frames in gray scale
         """
+        data_gray = skvideo.utils.rgb2gray(data)
+        if self.input_type == "video":
+            if data_gray.shape[0] < 2:
+                raise ValueError(
+                    "Video is not loaded correctly!\
+                    Try manually loading the video file."
+                )
         return skvideo.utils.rgb2gray(data)
 
-    def save_frames(
-        self, data: np.ndarray, data_name: str, del_existing: bool = True
-    ) -> None:
-        """Saves provided information 'data' for each frame in subdirectory
-        'data_name' in the parent folder specified by 'self.output_dir'
+    def save_data(self, data: np.ndarray, data_name: str) -> None:
+        """Saves provided information 'data'
         Inputs
         ----------
         data : np.ndarray
-            Information provided as input for all frames
+            data to be saved
         data_name: str
-            Subdirectory to save frames information
-        del_existing: bool
-            Removes subdirectory in 'self.output_dir' if it has the same name
-            as 'data_name' exists
+            saved file name
         """
-        output_path = "./" + f"{self.output_dir}/{data_name}/"
-        if del_existing:
-            try:
-                shutil.rmtree(output_path)
-            except Exception:
-                pass
-        Path(output_path).mkdir(parents=True, exist_ok=True)
-        for i, frame in enumerate(data):
-            np.save(f"{output_path}frame-" + f"{i}".zfill(5) + ".npy", frame)
+        Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
+        if type(data) in [np.ndarray, list]:
+            np.save(f"./{self.output_dir}/{data_name}.npy", data, allow_pickle=True)
+        elif type(data) == pd.DataFrame:
+            data.to_pickle(f"./{self.output_dir}/{data_name}.pkl")
+        else:
+            raise ValueError(
+                "Data type cannot be saved. Only numpy.ndarray and pandas.DataFrame are\
+                supported."
+            )
 
-    def filter_data(self, data: np.ndarray) -> np.ndarray:
+    def filter_frames(self, frames: np.ndarray) -> np.ndarray:
         """Applies a laplacian and a gaussian filter on each frame for
         zdisc segmentation
         Inputs
@@ -110,54 +111,52 @@ class SarcGraph:
         -------
             A numpy array containing filtered frames in gray scale
         """
-        if len(data.shape) != 4 or data.shape[-1] != 1:
+        if len(frames.shape) != 4 or frames.shape[-1] != 1:
             raise ValueError(
-                f"""Passed array ({data.shape}) is not of the
-                            right shape (frames, dim_1, dim_2, channels=1)"""
+                f"Passed array ({frames.shape}) is not of the\
+                correct shape (frames, dim_1, dim_2, channels=1)"
             )
-        filtered_data = np.zeros(data.shape[:-1])
-        for i, frame in enumerate(data[:, :, :, 0]):
+        filtered_frames = np.zeros(frames.shape[:-1])
+        for i, frame in enumerate(frames[:, :, :, 0]):
             laplacian = laplace(frame)
-            filtered_data[i] = gaussian(laplacian)
-        return filtered_data
+            filtered_frames[i] = gaussian(laplacian)
+        return filtered_frames
 
-    def zdisc_info_to_pandas(self, zdiscs_info_all):
-        """Creates a pandas dataframe that captures the z-discs.
+    def zdiscs_info_to_pandas(self, zdiscs_all_frames: list) -> pd.DataFrame:
+        """Create a pandas dataframe that captures zdiscs related information for all
+        frames
         Inputs
         ----------
-        data : np.ndarray
-            A numpy array containing all frames in gray scale
+        zdiscs_all_frames :
+            A list of numpy arrays containing zdiscs information for each frame
         Returns
         -------
-            A Pandas DataFrame containing zdiscs information [frame number,
-            zdiscs id within a frame, center position, end points positions,
-            fake mass]
+            A Pandas DataFrame containing zdiscs information [frame number, center
+            position, end points positions]
         """
+        if self.input_type == "video" and len(zdiscs_all_frames) < 2:
+            raise ValueError("Video is not loaded correctly.")
         data_frames = []
-        for i, zdiscs_info_frame in enumerate(zdiscs_info_all):
-            p1 = zdiscs_info_frame[:, 2:4]
-            p2 = zdiscs_info_frame[:, 4:6]
-            fake_mass = 11 * np.sum((p1 - p2) ** 2, axis=1, keepdims=True) ** 2
-            frame_id = i * np.ones((len(zdiscs_info_frame), 1))
-            zdisc_id_in_frame = np.arange(
-                0, len(zdiscs_info_frame), 1, dtype=int
-            ).reshape(-1, 1)
-            zdiscs_info_frame_extended = np.hstack(
-                (frame_id, zdisc_id_in_frame, zdiscs_info_frame, fake_mass)
-            )
+        for i, zdiscs_one_frame in enumerate(zdiscs_all_frames):
+            if type(zdiscs_one_frame) != np.ndarray:
+                raise TypeError("Input should be a list of numpy arrays.")
+            if zdiscs_one_frame.shape[-1] != 6:
+                raise ValueError(
+                    "Enough information is not included in zdiscs_info_all"
+                )
+            frame_id = i * np.ones((len(zdiscs_one_frame), 1))
+            zdiscs_info_frame_extended = np.hstack((frame_id, zdiscs_one_frame))
             data_frames.append(
                 pd.DataFrame(
                     zdiscs_info_frame_extended,
                     columns=[
                         "frame",
-                        "zdisc_id",
                         "x",
                         "y",
                         "p1_x",
                         "p1_y",
                         "p2_x",
                         "p2_y",
-                        "mass",
                     ],
                 )
             )
@@ -166,18 +165,50 @@ class SarcGraph:
     ###############################################################################
     #                             Z-Disc Segmentation                             #
     ###############################################################################
-    def preprocessing(
-        self, input_path: str, save_data: bool = False
-    ) -> List[np.ndarray]:
-        raw_data = self.data_loader(input_path)
+    def process_input(
+        self,
+        input_path: str = None,
+        input_file: np.ndarray = None,
+        save_data: bool = False,
+    ) -> np.ndarray:
+        """Loads an input image or video into a numpy array,
+        filters all frames and returns the array.
+        Inputs
+        ----------
+        input_path : str
+            The address of an image or video file
+        input_file : np.ndarray
+            Raw input image or video given as a 4 dimensional numpy array [number of
+            frames, x resolution, y resolution, number of channels]
+        save_data : bool
+            Must be set to True to save info
+        Returns
+        -------
+            A numpy array of all filtered frames
+        """
+        if input_file is None:
+            raw_data = self.data_loader(input_path)
+        else:
+            raw_data = input_file
         raw_data_gray = self._to_gray(raw_data)
-        filtered_data = self.filter_data(raw_data_gray)
+        filtered_data = self.filter_frames(raw_data_gray)
         if save_data:
-            self.save_frames(raw_data_gray, data_name="raw_frames")
-            self.save_frames(filtered_data, data_name="filtered_frames")
+            self.save_data(raw_data_gray, data_name="raw-frames")
+            self.save_data(filtered_data, data_name="filtered-frames")
         return filtered_data
 
-    def zdisc_detection(self, filtered_frames, save_data=False):
+    def detect_contours(self, filtered_frames, save_data=False):
+        """Detects zdiscs in each frame and returns 2d contours of all detected zdiscs
+        Inputs
+        ----------
+        filtered_frames : np.ndarray
+            A numpy array of all filtered frames
+        save_data : bool
+            Must be set to True to save info
+        Returns
+        -------
+            A list of numpy object array of all detected zdiscs as 2d contours
+        """
         length_checker = np.vectorize(len)
         valid_contours = []
         for i, frame in enumerate(filtered_frames):
@@ -186,11 +217,20 @@ class SarcGraph:
             contours_size = length_checker(contours)
             valid_contours.append(np.delete(contours, np.where(contours_size < 8)[0]))
         if save_data:
-            self.save_frames(data=valid_contours, data_name="contours")
+            self.save_data(data=valid_contours, data_name="contours")
         return valid_contours
 
-    def zdisc_processing(self, contour):
-        """Process the contour and return important properties."""
+    def process_contour(self, contour):
+        """Extracts center of a zdisc as well as its two end points given its 2d contour
+        ----------
+        contour : np.ndarray
+            A 2d contour of a detected zdisc
+        Returns
+        -------
+            zdisc center, end point 1, end point 2
+        """
+        if len(contour) < 2:
+            raise ValueError("A contour must have at least 2 points.")
         # coordinates of the center of a contour
         center_coords = np.mean(contour, axis=0)
         # find zdisc direction by matching furthest points on the contour
@@ -200,23 +240,48 @@ class SarcGraph:
         p1, p2 = contour[indices[0]], contour[indices[1]]
         return np.hstack((center_coords, p1, p2))
 
-    def zdisc_segmentation(self, input_path, save_data=False):
-        filtered_data = self.preprocessing(input_path, save_data)
-        contours_all = self.zdisc_detection(filtered_data, save_data)
-        zdiscs_processed_all = []
-        for contours_frame in contours_all:
-            zdiscs_processed_frame = np.zeros((len(contours_frame), 6))
-            for i, contour in enumerate(contours_frame):
-                zdiscs_processed_frame[i] = self.zdisc_processing(contour)
-            zdiscs_processed_all.append(zdiscs_processed_frame)
+    def zdisc_segmentation(
+        self,
+        input_path: str = None,
+        input_file: np.ndarray = None,
+        save_data: bool = False,
+    ):
+        """Segment Z-Discs in a all frame of a video or in an image and return a pandas
+        DataFrame containing [frame number, center position, end point 1, end point 2]
+        for each zdisc.
+        ----------
+        input_path : str
+            The address of an image or video file
+        input_file : np.ndarray
+            Input file as a numpy array [number of frames, x resolution, y resolution,
+            channels]
+        save_data : bool
+            Must be set to True to save information throughout the segmentation process
+        Returns
+        -------
+            A pandas DataFrame of each detected zdisc
+        """
+        if input_path is None and input_file is None:
+            raise ValueError("Either input_path or input_file should be specified.")
+        else:
+            filtered_data = self.process_input(input_path, input_file, save_data)
+        contours_all_frames = self.detect_contours(filtered_data, save_data)
+        zdiscs_all_frames = []
+        for contours_one_frame in contours_all_frames:
+            zdiscs_one_frame = np.zeros((len(contours_one_frame), 6))
+            for i, contour in enumerate(contours_one_frame):
+                zdiscs_one_frame[i] = self.process_contour(contour)
+            zdiscs_all_frames.append(zdiscs_one_frame)
+        zdiscs_all_frames_dataframe = self.zdiscs_info_to_pandas(zdiscs_all_frames)
         if save_data:
-            self.save_frames(data=zdiscs_processed_all, data_name="zdiscs-info")
-        return zdiscs_processed_all
+            self.save_data(data=zdiscs_all_frames_dataframe, data_name="zdiscs-info")
+        return zdiscs_all_frames_dataframe
 
     ###############################################################################
     #                               Z-disc Tracking                               #
     ###############################################################################
     def find_fully_tracked_zdiscs(self, tracked_zdiscs):
+
         num_frames = tracked_zdiscs.frame.max() + 1
         tracked_zdiscs_grouped = tracked_zdiscs.groupby("particle")["particle"]
         tracked_zdiscs["freq"] = tracked_zdiscs_grouped.transform("count")
@@ -234,6 +299,7 @@ class SarcGraph:
             partially_tracked_zdiscs,
             fully_tracked_zdiscs,
         ) = self.find_fully_tracked_zdiscs(tracked_zdiscs)
+
         partially_tracked_clusters = (
             partially_tracked_zdiscs[["x", "y", "particle"]]
             .groupby(by=["particle"])
@@ -266,7 +332,9 @@ class SarcGraph:
                     all_merged_zdiscs.append(merged_zdiscs.reset_index())
         if all_merged_zdiscs:
             all_merged_zdiscs = pd.concat(all_merged_zdiscs)
-        return pd.concat((fully_tracked_zdiscs, all_merged_zdiscs))
+            return pd.concat((fully_tracked_zdiscs, all_merged_zdiscs))
+        else:
+            return fully_tracked_zdiscs
 
     def zdisc_tracking(
         self, partial_tracking_threshold, input_path=None, zdiscs_info=None, tp_depth=4
@@ -279,7 +347,7 @@ class SarcGraph:
         elif zdiscs_info is None:
             zdiscs_info = self.zdisc_segmentation(input_path)
 
-        zdiscs_info_dataframe = self.zdisc_info_to_pandas(zdiscs_info)
+        zdiscs_info_dataframe = self.zdiscs_info_to_pandas(zdiscs_info)
 
         if self.input_type == "image":
             print("Cannot perform tracking on a single-frame image.")
