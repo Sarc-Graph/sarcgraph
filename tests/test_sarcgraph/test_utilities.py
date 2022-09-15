@@ -45,9 +45,9 @@ def test_filtered_data_input():
     data_1 = np.ones((3, 4, 4, 2))
     data_2 = np.ones((4, 4, 1))
     with pytest.raises(ValueError):
-        sg.filter_data(data_1)
+        sg.filter_frames(data_1)
     with pytest.raises(ValueError):
-        sg.filter_data(data_2)
+        sg.filter_frames(data_2)
 
 
 def test_filtered_data_output():
@@ -55,12 +55,14 @@ def test_filtered_data_output():
     test_data[0, :, 32] = 1
     test_data[1, 32, :] = 1
     sg = SarcGraph("test")
-    filtered_data = sg.filter_data(sg._to_gray(test_data))
+    filtered_data = sg.filter_frames(sg._to_gray(test_data))
     assert np.array_equal(np.argmax(filtered_data[0], axis=1), 32 * np.ones(65))
     assert np.array_equal(np.argmax(filtered_data[1], axis=0), 32 * np.ones(65))
 
     sg = SarcGraph("test")
-    filtered_data = sg.filter_data(sg._to_gray(sg.data_loader("samples/sample_1.avi")))
+    filtered_data = sg.filter_frames(
+        sg._to_gray(sg.data_loader("samples/sample_1.avi"))
+    )
     assert len(filtered_data.shape) == 3
 
 

@@ -197,7 +197,9 @@ class SarcGraph:
             self.save_data(filtered_data, data_name="filtered-frames")
         return filtered_data
 
-    def detect_contours(self, filtered_frames, save_data=False):
+    def detect_contours(
+        self, filtered_frames: np.ndarray, save_data: bool = False
+    ) -> List[np.ndarray]:
         """Detects zdiscs in each frame and returns 2d contours of all detected zdiscs
         Inputs
         ----------
@@ -220,7 +222,7 @@ class SarcGraph:
             self.save_data(data=valid_contours, data_name="contours")
         return valid_contours
 
-    def process_contour(self, contour):
+    def process_contour(self, contour: np.ndarray) -> np.ndarray:
         """Extracts center of a zdisc as well as its two end points given its 2d contour
         ----------
         contour : np.ndarray
@@ -245,7 +247,7 @@ class SarcGraph:
         input_path: str = None,
         input_file: np.ndarray = None,
         save_data: bool = False,
-    ):
+    ) -> pd.DataFrame:
         """Segment Z-Discs in a all frame of a video or in an image and return a pandas
         DataFrame containing [frame number, center position, end point 1, end point 2]
         for each zdisc.
@@ -280,25 +282,38 @@ class SarcGraph:
     ###############################################################################
     #                               Z-disc Tracking                               #
     ###############################################################################
-    def find_fully_tracked_zdiscs(self, tracked_zdiscs):
-
-        num_frames = tracked_zdiscs.frame.max() + 1
+    def merge_partially_tracked_zdiscs(
+        self,
+        tracked_zdiscs: pd.DataFrame,
+        partial_tracking_threshold: float = 0.75,
+        optics_eps: float = 1,
+        optics_min_samples: int = 2,
+    ) -> pd.DataFrame:
+        """This post processing step is intended to improve the results of applying
+        trackpy to track detected zdiscs over all frames. OPTICS, a density based
+        clustering algorithm, is used to group related partially tracked zdiscs to add
+        more fully tracked zdiscs.
+        ----------
+        tracked_zdiscs: pd.DataFrame
+            A DataFrame of tracked zdiscs information for all frames with particle id
+        partial_tracking_threshold: float
+            If a zdisc is succesfully tracked in more than `partial_tracking_threshold`
+            of the total number of frames, it is considered a fully tracked zdisc. The
+            default value is 0.75, which means if a zdisc is tracked in more than 75
+            percent of the frames it is fully tracked.
+        optics_eps: float
+            https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
+        optics_min_samples: float
+            https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
+        Returns
+        -------
+            A pandas DataFrame of fully tracked zdisc
+        """
+        num_frames = len(tracked_zdiscs.frame.unique())
         tracked_zdiscs_grouped = tracked_zdiscs.groupby("particle")["particle"]
         tracked_zdiscs["freq"] = tracked_zdiscs_grouped.transform("count")
         fully_tracked_zdiscs = tracked_zdiscs.loc[tracked_zdiscs.freq == num_frames]
         partially_tracked_zdiscs = tracked_zdiscs.loc[tracked_zdiscs.freq < num_frames]
-        return num_frames, partially_tracked_zdiscs, fully_tracked_zdiscs
-
-    # load all of tracked z-disc clusters and merge similar clusters of
-    # partially tracked z-discs
-    def merge_partially_tracked_zdiscs(
-        self, tracked_zdiscs, partial_tracking_threshold
-    ):
-        (
-            num_frames,
-            partially_tracked_zdiscs,
-            fully_tracked_zdiscs,
-        ) = self.find_fully_tracked_zdiscs(tracked_zdiscs)
 
         partially_tracked_clusters = (
             partially_tracked_zdiscs[["x", "y", "particle"]]
@@ -308,7 +323,7 @@ class SarcGraph:
 
         # merge related clusters (neighbors)
         data = np.array(partially_tracked_clusters)
-        optics_model = OPTICS(eps=1, min_samples=2)
+        optics_model = OPTICS(eps=optics_eps, min_samples=optics_min_samples)
         optics_result = optics_model.fit_predict(data)
         optics_clusters = np.unique(optics_result)
 
@@ -337,8 +352,31 @@ class SarcGraph:
             return fully_tracked_zdiscs
 
     def zdisc_tracking(
-        self, partial_tracking_threshold, input_path=None, zdiscs_info=None, tp_depth=4
-    ):
+        self,
+        input_path: str = None,
+        zdiscs_info: pd.DataFrame = None,
+        tp_depth: float = 4.0,
+        partial_tracking_threshold: float = 0.75,
+        save_data: bool = False,
+    ) -> pd.DataFrame:
+        """Detect and track Z-Discs in a all frames of a video and return a pandas
+        DataFrame containing [frame number, center position, end point 1, end point 2,
+        particle id] for each zdisc. If `input_path` is given, this function
+        automatically runs `zdisc_segmentation` before applying trackpy.
+        ----------
+        input_path: str
+            The address of an image or video file
+        zdiscs_info: pd.DataFrame
+            A pandas DataFrame of each detected zdisc
+        tp_depth: float
+            the maximum distance features can move between frames, optionally per
+            dimension
+        save_data : bool
+            Must be set to True to save information throughout the segmentation process
+        Returns
+        -------
+            A pandas DataFrame of each detected zdisc
+        """
         if input_path is None and zdiscs_info is None:
             raise ValueError(
                 "Either input_path to the original video/image or a numpy array of\
@@ -347,41 +385,51 @@ class SarcGraph:
         elif zdiscs_info is None:
             zdiscs_info = self.zdisc_segmentation(input_path)
 
-        zdiscs_info_dataframe = self.zdiscs_info_to_pandas(zdiscs_info)
-
+        correct_columns = set(("frame", "x", "y")).issubset(set(zdiscs_info.columns))
+        if type(zdiscs_info) != pd.DataFrame:
+            raise TypeError("zdiscs_info shoulb be a dataframe.")
+        if not correct_columns:
+            raise ValueError(
+                "zdiscs_info must contain at least three columns: 'x', 'y', 'frame'."
+            )
         if self.input_type == "image":
             print("Cannot perform tracking on a single-frame image.")
-            zdiscs_info_dataframe["particle"] = np.arange(len(zdiscs_info_dataframe))
-            return zdiscs_info_dataframe
+            zdiscs_info["particle"] = np.arange(len(zdiscs_info))
+            return zdiscs_info
 
+        num_frames = len(zdiscs_info.frame.unique())
         # Run tracking --> using the trackpy package
         # http://soft-matter.github.io/trackpy/v0.3.0/tutorial/prediction.html
-        t = tp.link_df(zdiscs_info_dataframe, tp_depth, memory=int(len(zdiscs_info)))
-        tracked_zdiscs = tp.filter_stubs(t, int(len(zdiscs_info) * 0.10)).reset_index(
-            drop=True
-        )
-
-        return self.merge_partially_tracked_zdiscs(
+        t = tp.link_df(zdiscs_info, search_range=tp_depth, memory=num_frames)
+        tracked_zdiscs = tp.filter_stubs(t, num_frames * 0.10).reset_index(drop=True)
+        tracked_zdiscs = self.merge_partially_tracked_zdiscs(
             tracked_zdiscs, partial_tracking_threshold
         )
+        if save_data:
+            self.save_data(tracked_zdiscs, "tracked-zdiscs")
+
+        return tracked_zdiscs
 
     #################################################################################
     #                              Sarcomere Detection                              #
     #################################################################################
-    # if input_type=='image' then zdisc_clusters are the zdiscs in the only available
-    # frame.
-    # if input_type=='video' then zdisc_clusters are the average location of a tracked
-    # zdisc over all frames.
-    def zdisc_clusters_to_graph(self, zdisc_clusters):
+    def zdisc_clusters_to_graph(self, zdisc_clusters: np.array):
+        """Creates a graph with zdisc clusters as nodes and connections between a zdisc
+        and its neighbors as edges
+        ----------
+        zdisc_clusters: np.array
+            A 2d numpy array where columns are 'x' and 'y' location of a zdisc cluster
+            center point and its particle
+        Returns
+        -------
+            A networkx graph
+        """
         # finding K(=3) nearest clusters to each cluster
         neigh = NearestNeighbors(n_neighbors=2)
         neigh.fit(zdisc_clusters[:, 0:2])
         nearestNeighbors = neigh.kneighbors(
             zdisc_clusters[:, 0:2], 4, return_distance=False
         )
-
-        # create a graph with zdiscs as nodes and connections between a zdisc and its
-        # neighbors as edges
         num_nodes = len(zdisc_clusters)
         G = nx.Graph()
         G.add_nodes_from(range(num_nodes))
@@ -406,7 +454,7 @@ class SarcGraph:
 
         return G
 
-    def score_cluster_connections(
+    def score_connections(
         self, G, c_avg_length=1, c_angle=1, c_diff_length=1, l_avg=12.0
     ):
         # scoring edges of the graph
@@ -447,9 +495,7 @@ class SarcGraph:
         nx.set_edge_attributes(G, values=edges_attr_dict, name="score")
         return G
 
-    def find_valid_cluster_connections(
-        self, G, score_threshold=0.01, angle_threshold=1.2
-    ):
+    def find_valid_connections(self, G, score_threshold=0.01, angle_threshold=1.2):
         # graph pruning (visit all nodes):
         # for each node increase the validity of up to 2 most likely connections by 1
         nx.set_edge_attributes(G, values=0, name="validity")
@@ -480,28 +526,46 @@ class SarcGraph:
                         break
         return G
 
-    def detect_myofibrils(
-        self, partial_tracking_threshold, input_path=None, fully_tracked_zdiscs=None
+    def sarcomere_detection(
+        self,
+        input_path: str = None,
+        tracked_zdiscs: pd.DataFrame = None,
+        partial_tracking_threshold: float = 0.75,
     ):
-        if input_path is None and fully_tracked_zdiscs is None:
+        """Detects sarcomeres in an image or a video and tracks them.
+        ----------
+        input_path:  str
+            The address of an image or video file
+        tracked_zdiscs: pd.DataFrame
+            A dataframe of tracked zdiscs with at least 'x', 'y', 'frame', 'particle'
+            as columns
+        partial_tracking_threshold: float
+            Frame ratio to seperate partially tracked vs fully tracked sarcomeres
+        Returns
+        -------
+            A 3d numpy array where the first index contains ['sarcomere length',
+            'center x', 'center y', 'width', 'angle'], the second index indicates
+            different sarcomeres, and the third index is for frame number.
+        """
+        if input_path is None and tracked_zdiscs is None:
             raise ValueError(
                 """Either input_path to the original video/image
             or trackpy results should be provided."""
             )
-        elif fully_tracked_zdiscs is None:
-            fully_tracked_zdiscs = self.zdisc_tracking(
+        elif tracked_zdiscs is None:
+            tracked_zdiscs = self.zdisc_tracking(
                 partial_tracking_threshold, input_path=input_path
             )
 
-        fully_tracked_zdiscs_clusters = (
-            fully_tracked_zdiscs.groupby("particle")
+        tracked_zdiscs_clusters = (
+            tracked_zdiscs.groupby("particle")
             .mean()
             .reset_index()[["x", "y", "particle"]]
             .to_numpy()
         )
-        G = self.zdisc_clusters_to_graph(fully_tracked_zdiscs_clusters)
-        G = self.score_cluster_connections(G)
-        G = self.find_valid_cluster_connections(G)
+        G = self.zdisc_clusters_to_graph(tracked_zdiscs_clusters)
+        G = self.score_connections(G)
+        G = self.find_valid_connections(G)
 
         edges2remove = []
         for edge in G.edges():
@@ -521,25 +585,25 @@ class SarcGraph:
                 )
         sarcs_zdiscs_ids = np.array(sarcs_zdiscs_ids).astype(int)
 
-        frame_num = np.max(fully_tracked_zdiscs.frame)
+        frame_num = np.max(tracked_zdiscs.frame)
         sarc_num = len(sarcs_zdiscs_ids)
         sarc_info = np.zeros((5, sarc_num, frame_num))
         for i, sarc in enumerate(sarcs_zdiscs_ids):
             for frame in range(frame_num):
                 zdisc_1_index = np.where(
                     np.logical_and(
-                        fully_tracked_zdiscs.particle == sarc[0],
-                        fully_tracked_zdiscs.frame == frame,
+                        tracked_zdiscs.particle == sarc[0],
+                        tracked_zdiscs.frame == frame,
                     )
                 )
-                zdisc_1 = fully_tracked_zdiscs.iloc[zdisc_1_index]
+                zdisc_1 = tracked_zdiscs.iloc[zdisc_1_index]
                 zdisc_2_index = np.where(
                     np.logical_and(
-                        fully_tracked_zdiscs.particle == sarc[1],
-                        fully_tracked_zdiscs.frame == frame,
+                        tracked_zdiscs.particle == sarc[1],
+                        tracked_zdiscs.frame == frame,
                     )
                 )
-                zdisc_2 = fully_tracked_zdiscs.iloc[zdisc_2_index].replace("", np.nan)
+                zdisc_2 = tracked_zdiscs.iloc[zdisc_2_index].replace("", np.nan)
                 if zdisc_1.empty or zdisc_2.empty:
                     sarc_info[:, i, frame] = np.nan
                 else:
@@ -571,4 +635,4 @@ class SarcGraph:
 
         np.save(f"{self.output_dir}/sarcomeres-info.npy", sarc_info)
 
-        return myofibrils  # , sarc_info
+        return myofibrils, sarc_info
