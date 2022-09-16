@@ -372,7 +372,7 @@ class SarcGraph:
             the maximum distance features can move between frames, optionally per
             dimension
         save_data : bool
-            Must be set to True to save information throughout the segmentation process
+            Must be set to True to save information throughout the tracking process
         Returns
         -------
             A pandas DataFrame of each detected zdisc
@@ -455,24 +455,34 @@ class SarcGraph:
         return G
 
     def score_connections(
-        self, G, c_avg_length=1, c_angle=1, c_diff_length=1, l_avg=12.0
-    ):
-        # scoring edges of the graph
+        self,
+        G: nx.Graph,
+        c_avg_length: float,
+        c_angle: float,
+        c_diff_length: float,
+        l_avg: float,
+    ) -> nx.Graph:
+        """Scores each connection of the graph based on neighboring connections.
+        ----------
+        G: nx.Graph
+            An unscored graph of zdiscs clusters
+        Returns
+        -------
+            A scored graph of zdiscs clusters.
+        """
         edges_attr_dict = {}
         for node in range(G.number_of_nodes()):
             for neighbor in G.neighbors(node):
                 score = 0
+                v1 = G.nodes[neighbor]["pos"] - G.nodes[node]["pos"]
+                l1 = np.linalg.norm(v1)
+                avg_length_score = np.exp(-np.pi * (1 - l1 / l_avg) ** 2)
                 for far_neighbor in G.neighbors(neighbor):
                     if far_neighbor in [node, neighbor]:
                         pass
                     else:
-                        # calculate the scores
-                        v1 = (
-                            G.nodes[neighbor]["pos"] - G.nodes[node]["pos"]
-                        )  # vector connecting node to neighbor
-                        l1 = np.linalg.norm(v1)
                         v2 = (
-                            G.nodes[far_neighbor]["pos"] - G.nodes[neighbor]["pos"]
+                            G.nodes[neighbor]["pos"] - G.nodes[far_neighbor]["pos"]
                         )  # vector connecting neighbor to far_neighbor
                         l2 = np.linalg.norm(v2)
 
@@ -481,23 +491,42 @@ class SarcGraph:
 
                         angle_score = np.power(1 - d_theta, 2) if d_theta >= 1 else 0
                         diff_length_score = 1 / (1 + d_l)
-                        avg_length_score = np.exp(-np.pi * (1 - l1 / l_avg) ** 2)
 
                         score = np.max(
                             (
                                 score,
-                                c_avg_length * avg_length_score
-                                + c_diff_length * diff_length_score
+                                c_diff_length * diff_length_score
                                 + c_angle * angle_score,
                             )
                         )
+                score += c_avg_length * avg_length_score
                 edges_attr_dict[(node, neighbor)] = score
-        nx.set_edge_attributes(G, values=edges_attr_dict, name="score")
+
+        edges_attr_dict_keep_max = {}
+        for key in edges_attr_dict.keys():
+            node_1 = key[0]
+            node_2 = key[1]
+            max_score = max(
+                edges_attr_dict[(node_1, node_2)], edges_attr_dict[(node_2, node_1)]
+            )
+            edges_attr_dict_keep_max[(min(key), max(key))] = max_score
+        nx.set_edge_attributes(G, values=edges_attr_dict_keep_max, name="score")
         return G
 
-    def find_valid_connections(self, G, score_threshold=0.01, angle_threshold=1.2):
-        # graph pruning (visit all nodes):
-        # for each node increase the validity of up to 2 most likely connections by 1
+    def find_valid_connections(
+        self, G: nx.Graph, score_threshold: float, angle_threshold: float
+    ) -> nx.Graph:
+        """Keeps connections with highest probability to form a valid sarcomere by
+        connecting the two zdiscs. This function removes invalid or less probable
+        connections inplace.
+        ----------
+        G: nx.Graph
+            A scored graph of zdiscs clusters
+        Returns
+        -------
+            A pruned graph of zdiscs clusters where each remaining connection indicates
+            the two corresponding zdiscs form a sarcomere.
+        """
         nx.set_edge_attributes(G, values=0, name="validity")
         for node in range(G.number_of_nodes()):
             vectors = []
@@ -524,6 +553,13 @@ class SarcGraph:
                     if theta > angle_threshold and s > score_threshold:
                         G[node][n]["validity"] += 1
                         break
+
+        edges2remove = []
+        for edge in G.edges():
+            if G.edges[edge]["validity"] < 2:
+                edges2remove.append(edge)
+        G.remove_edges_from(edges2remove)
+
         return G
 
     def sarcomere_detection(
@@ -531,7 +567,14 @@ class SarcGraph:
         input_path: str = None,
         tracked_zdiscs: pd.DataFrame = None,
         partial_tracking_threshold: float = 0.75,
-    ):
+        c_avg_length: float = 1,
+        c_angle: float = 1,
+        c_diff_length: float = 1,
+        l_avg: float = 12.0,
+        score_threshold: float = 0.01,
+        angle_threshold: float = 1.2,
+        save_data: bool = False,
+    ) -> np.ndarray:
         """Detects sarcomeres in an image or a video and tracks them.
         ----------
         input_path:  str
@@ -541,6 +584,26 @@ class SarcGraph:
             as columns
         partial_tracking_threshold: float
             Frame ratio to seperate partially tracked vs fully tracked sarcomeres
+        c_avg_length: float
+            Coefficient of the average length score component. The higher means
+            connections with a length close to 'l_avg' have higher total score
+        c_angle: float
+            Coefficient of the angle score component. Higher angle score means
+            a connection and one of its neighboring connections are more aligned.
+        c_diff_length: float
+            Coefficient of the angle score component. Higher score for a connection
+            means there is a neighboring connection with a length close to the length
+            of this connection.
+        l_avg: float
+            An estimated average length of all sarcomeres
+        score_threshold: float
+            A connection is invalid if its score is below this threshold
+        angle_threshold: float
+            If a node has a valid connection, a second valid connection can only be
+            added to that node if the angle between the two connections is above this
+            threshold.
+        save_data : bool
+            Must be set to True to save information throughout the process
         Returns
         -------
             A 3d numpy array where the first index contains ['sarcomere length',
@@ -553,9 +616,7 @@ class SarcGraph:
             or trackpy results should be provided."""
             )
         elif tracked_zdiscs is None:
-            tracked_zdiscs = self.zdisc_tracking(
-                partial_tracking_threshold, input_path=input_path
-            )
+            tracked_zdiscs = self.zdisc_tracking(input_path=input_path)
 
         tracked_zdiscs_clusters = (
             tracked_zdiscs.groupby("particle")
@@ -564,14 +625,8 @@ class SarcGraph:
             .to_numpy()
         )
         G = self.zdisc_clusters_to_graph(tracked_zdiscs_clusters)
-        G = self.score_connections(G)
-        G = self.find_valid_connections(G)
-
-        edges2remove = []
-        for edge in G.edges():
-            if G.edges[edge]["validity"] < 2:
-                edges2remove.append(edge)
-        G.remove_edges_from(edges2remove)
+        G = self.score_connections(G, c_avg_length, c_angle, c_diff_length, l_avg)
+        G = self.find_valid_connections(G, score_threshold, angle_threshold)
 
         myofibrils = [G.subgraph(c).copy() for c in nx.connected_components(G)]
         sarcs_zdiscs_ids = []
@@ -585,7 +640,7 @@ class SarcGraph:
                 )
         sarcs_zdiscs_ids = np.array(sarcs_zdiscs_ids).astype(int)
 
-        frame_num = np.max(tracked_zdiscs.frame)
+        frame_num = len(tracked_zdiscs.frame.unique())
         sarc_num = len(sarcs_zdiscs_ids)
         sarc_info = np.zeros((5, sarc_num, frame_num))
         for i, sarc in enumerate(sarcs_zdiscs_ids):
@@ -632,7 +687,7 @@ class SarcGraph:
                     if sarc_angle < 0:
                         sarc_angle += np.pi
                     sarc_info[4, i, frame] = sarc_angle
-
-        np.save(f"{self.output_dir}/sarcomeres-info.npy", sarc_info)
+        if save_data:
+            np.save(f"{self.output_dir}/sarcomeres-info.npy", sarc_info)
 
         return myofibrils, sarc_info
