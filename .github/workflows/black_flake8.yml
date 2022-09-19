@@ -5,8 +5,6 @@ on:
   push:
     paths:
       - "!src/**.py"
-  schedule:
-    - cron: "0 6,18 * * *"
 
 jobs:
   check_python:
