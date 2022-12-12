@@ -1,11 +1,7 @@
 ##################################################################
 # Description:                                                   #
 # This script contrains Python implementation of the SarcGraph   #
-# Algorithm for sarcomere detection used for sarcomere detection #
-# and tracking                                                   #
-##################################################################
-# Author: Saeed Mohammadzadeh                                    #
-# Email: saeedmhz@bu.edu                                         #
+# Algorithm for sarcomere detection and tracking                 #
 ##################################################################
 import numpy as np
 import pandas as pd
@@ -266,8 +262,10 @@ class SarcGraph:
         if input_path is None and input_file is None:
             raise ValueError("Either input_path or input_file should be specified.")
         else:
-            filtered_data = self.process_input(input_path, input_file, save_data)
-        contours_all_frames = self.detect_contours(filtered_data, save_data)
+            filtered_data = self.process_input(
+                input_path, input_file, save_data=save_data
+            )
+        contours_all_frames = self.detect_contours(filtered_data, save_data=save_data)
         zdiscs_all_frames = []
         for contours_one_frame in contours_all_frames:
             zdiscs_one_frame = np.zeros((len(contours_one_frame), 6))
@@ -383,7 +381,7 @@ class SarcGraph:
                 frame by frame zdiscs_info should be specified.."
             )
         elif zdiscs_info is None:
-            zdiscs_info = self.zdisc_segmentation(input_path)
+            zdiscs_info = self.zdisc_segmentation(input_path, save_data=save_data)
 
         correct_columns = set(("frame", "x", "y")).issubset(set(zdiscs_info.columns))
         if type(zdiscs_info) != pd.DataFrame:
@@ -567,6 +565,7 @@ class SarcGraph:
         input_path: str = None,
         tracked_zdiscs: pd.DataFrame = None,
         partial_tracking_threshold: float = 0.75,
+        tp_depth: float = 4.0,
         c_avg_length: float = 1,
         c_angle: float = 1,
         c_diff_length: float = 1,
@@ -582,6 +581,9 @@ class SarcGraph:
         tracked_zdiscs: pd.DataFrame
             A dataframe of tracked zdiscs with at least 'x', 'y', 'frame', 'particle'
             as columns
+        tp_depth: float
+            the maximum distance features can move between frames, optionally per
+            dimension
         partial_tracking_threshold: float
             Frame ratio to seperate partially tracked vs fully tracked sarcomeres
         c_avg_length: float
@@ -616,7 +618,9 @@ class SarcGraph:
             or trackpy results should be provided."""
             )
         elif tracked_zdiscs is None:
-            tracked_zdiscs = self.zdisc_tracking(input_path=input_path)
+            tracked_zdiscs = self.zdisc_tracking(
+                input_path=input_path, tp_depth=tp_depth, save_data=save_data
+            )
 
         tracked_zdiscs_clusters = (
             tracked_zdiscs.groupby("particle")
@@ -662,12 +666,8 @@ class SarcGraph:
                 if zdisc_1.empty or zdisc_2.empty:
                     sarc_info[:, i, frame] = np.nan
                 else:
-                    sarc_info[0, i, frame] = np.mean(
-                        zdisc_1.x.values + zdisc_2.x.values
-                    )
-                    sarc_info[1, i, frame] = np.mean(
-                        zdisc_1.y.values + zdisc_2.y.values
-                    )
+                    sarc_info[0, i, frame] = (zdisc_1.x.values + zdisc_2.x.values) / 2
+                    sarc_info[1, i, frame] = (zdisc_1.y.values + zdisc_2.y.values) / 2
                     sarc_info[2, i, frame] = np.linalg.norm(
                         zdisc_1[["x", "y"]].values - zdisc_2[["x", "y"]].values
                     )
@@ -679,7 +679,7 @@ class SarcGraph:
                         zdisc_2[["p1_x", "p1_y"]].values
                         - zdisc_2[["p2_x", "p2_y"]].values
                     )
-                    sarc_info[3, i, frame] = np.mean(zdisc_1_width + zdisc_2_width)
+                    sarc_info[3, i, frame] = (zdisc_1_width + zdisc_2_width) / 2
                     sarc_angle = np.arctan2(
                         zdisc_2.y.values - zdisc_1.y.values,
                         zdisc_2.x.values - zdisc_1.x.values,
