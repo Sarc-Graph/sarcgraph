@@ -780,7 +780,7 @@ class SarcGraph:
         score_threshold: float = 0.01,
         angle_threshold: float = 1.2,
         save_output: bool = True,
-    ) -> Tuple[pd.DataFrame, List(nx.Graph)]:
+    ) -> Tuple[pd.DataFrame, List[nx.Graph]]:
         """Detect sarcomeres in a video/image. The input could be the address
         to the video/image sample, raw frames as a numpy array, segmented
         zdiscs information in a pandas dataframe, or a dataframe of tracked
@@ -906,9 +906,9 @@ class SarcGraph:
         myofibrils = [G.subgraph(c).copy() for c in nx.connected_components(G)]
 
         sarcs = []
-        for edge in G.edges:
-            p1 = G.nodes[edge[0]]["particle_id"]
-            p2 = G.nodes[edge[1]]["particle_id"]
+        for i, edge in enumerate(G.edges):
+            p1 = int(G.nodes[edge[0]]["particle_id"])
+            p2 = int(G.nodes[edge[1]]["particle_id"])
             z1 = tracked_zdiscs[tracked_zdiscs.particle == p1]
             z2 = tracked_zdiscs[tracked_zdiscs.particle == p2]
             z1.columns = np.insert(z2.columns.values[1:] + "_p1", 0, "frame")
@@ -919,10 +919,11 @@ class SarcGraph:
             sarc = pd.merge(z0, z1, how="outer", on="frame")
             sarc = pd.merge(z1, z2, how="outer", on="frame")
 
+            sarc["sarc_id"] = i
             sarc["zdiscs"] = ",".join(
                 map(str, sorted((p1, p2)))
             )  # list(map(float, sarc.zdiscs[0].split(',')))
-            sarc["x"] = (sarc.x_p1 + sarc.x_p1) / 2
+            sarc["x"] = (sarc.x_p1 + sarc.x_p2) / 2
             sarc["y"] = (sarc.y_p1 + sarc.y_p2) / 2
             length = np.sqrt(
                 (sarc.x_p1 - sarc.x_p2) ** 2 + (sarc.y_p1 - sarc.y_p2) ** 2
@@ -941,7 +942,18 @@ class SarcGraph:
             angle[angle < 0] += np.pi
             sarc["angle"] = angle
             sarcs.append(
-                sarc[["frame", "x", "y", "length", "width", "angle", "zdiscs"]]
+                sarc[
+                    [
+                        "frame",
+                        "sarc_id",
+                        "x",
+                        "y",
+                        "length",
+                        "width",
+                        "angle",
+                        "zdiscs",
+                    ]
+                ]
             )
         sarcs = pd.concat(sarcs).reset_index().drop("index", axis=1)
 
