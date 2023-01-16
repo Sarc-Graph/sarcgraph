@@ -91,7 +91,7 @@ class SarcGraph:
         file_name: str
         """
         Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
-        if type(data) in [np.ndarray, list]:
+        if isinstance(data, Union[List, np.ndarray]):
             np.save(
                 f"./{self.output_dir}/{file_name}.npy", data, allow_pickle=True
             )
@@ -108,10 +108,12 @@ class SarcGraph:
         file_name: str
         """
         Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
-        if type(data) == pd.DataFrame:
+        if isinstance(data, pd.DataFrame):
             data.to_csv(f"./{self.output_dir}/{file_name}.csv")
             return
-        raise TypeError("data must be a pandas DataFrame.")
+        raise TypeError(
+            f"'data' type is {type(data)}. 'data' must be a pandas DataFrame."
+        )
 
     def _filter_frames(
         self, frames: np.ndarray, sigma: float = 1.0
@@ -899,69 +901,48 @@ class SarcGraph:
         G = self._prune_graph(G, score_threshold, angle_threshold)
 
         myofibrils = [G.subgraph(c).copy() for c in nx.connected_components(G)]
-        sarcs_zdiscs_ids = []
-        for myofibril in myofibrils:
-            for zdisc_1, zdisc_2 in myofibril.edges:
-                sarcs_zdiscs_ids.append(
-                    [
-                        myofibril.nodes[zdisc_1]["particle_id"],
-                        myofibril.nodes[zdisc_2]["particle_id"],
-                    ]
-                )
-        sarcs_zdiscs_ids = np.array(sarcs_zdiscs_ids).astype(int)
 
-        frame_num = len(tracked_zdiscs.frame.unique())
-        sarc_num = len(sarcs_zdiscs_ids)
-        sarc_info = np.zeros((5, sarc_num, frame_num))
-        for i, sarc in enumerate(sarcs_zdiscs_ids):
-            for frame in range(frame_num):
-                zdisc_1_index = np.where(
-                    np.logical_and(
-                        tracked_zdiscs.particle == sarc[0],
-                        tracked_zdiscs.frame == frame,
-                    )
-                )
-                zdisc_1 = tracked_zdiscs.iloc[zdisc_1_index]
-                zdisc_2_index = np.where(
-                    np.logical_and(
-                        tracked_zdiscs.particle == sarc[1],
-                        tracked_zdiscs.frame == frame,
-                    )
-                )
-                zdisc_2 = tracked_zdiscs.iloc[zdisc_2_index].replace(
-                    "", np.nan
-                )
-                if zdisc_1.empty or zdisc_2.empty:
-                    sarc_info[:, i, frame] = np.nan
-                else:
-                    sarc_info[0, i, frame] = (
-                        zdisc_1.x.values + zdisc_2.x.values
-                    ) / 2
-                    sarc_info[1, i, frame] = (
-                        zdisc_1.y.values + zdisc_2.y.values
-                    ) / 2
-                    sarc_info[2, i, frame] = np.linalg.norm(
-                        zdisc_1[["x", "y"]].values - zdisc_2[["x", "y"]].values
-                    )
-                    zdisc_1_width = np.linalg.norm(
-                        zdisc_1[["p1_x", "p1_y"]].values
-                        - zdisc_1[["p2_x", "p2_y"]].values
-                    )
-                    zdisc_2_width = np.linalg.norm(
-                        zdisc_2[["p1_x", "p1_y"]].values
-                        - zdisc_2[["p2_x", "p2_y"]].values
-                    )
-                    sarc_info[3, i, frame] = (
-                        zdisc_1_width + zdisc_2_width
-                    ) / 2
-                    sarc_angle = np.arctan2(
-                        zdisc_2.y.values - zdisc_1.y.values,
-                        zdisc_2.x.values - zdisc_1.x.values,
-                    )
-                    if sarc_angle < 0:
-                        sarc_angle += np.pi
-                    sarc_info[4, i, frame] = sarc_angle
+        sarcs = []
+        for edge in G.edges:
+            p1 = G.nodes[edge[0]]["particle_id"]
+            p2 = G.nodes[edge[1]]["particle_id"]
+            z1 = tracked_zdiscs[tracked_zdiscs.particle == p1]
+            z2 = tracked_zdiscs[tracked_zdiscs.particle == p2]
+            z1.columns = np.insert(z2.columns.values[1:] + "_p1", 0, "frame")
+            z2.columns = np.insert(z2.columns.values[1:] + "_p2", 0, "frame")
+
+            num_frames = tracked_zdiscs.frame.max() + 1
+            z0 = pd.DataFrame(np.arange(0, num_frames, 1), columns=["frame"])
+            sarc = pd.merge(z0, z1, how="outer", on="frame")
+            sarc = pd.merge(z1, z2, how="outer", on="frame")
+
+            sarc["zdiscs"] = ",".join(
+                map(str, sorted((p1, p2)))
+            )  # list(map(float, sarc.zdiscs[0].split(',')))
+            sarc["x"] = (sarc.x_p1 + sarc.x_p1) / 2
+            sarc["y"] = (sarc.y_p1 + sarc.y_p2) / 2
+            length = np.sqrt(
+                (sarc.x_p1 - sarc.x_p2) ** 2 + (sarc.y_p1 - sarc.y_p2) ** 2
+            )
+            sarc["length"] = length
+            width1 = np.sqrt(
+                (sarc.p1_x_p1 - sarc.p2_x_p1) ** 2
+                + (sarc.p1_y_p1 - sarc.p2_y_p1) ** 2
+            )
+            width2 = np.sqrt(
+                (sarc.p1_x_p2 - sarc.p2_x_p2) ** 2
+                + (sarc.p1_y_p2 - sarc.p2_y_p2) ** 2
+            )
+            sarc["width"] = (width1 + width2) / 2
+            angle = np.arctan2(sarc.y_p2 - sarc.y_p1, sarc.x_p2 - sarc.x_p1)
+            angle[angle < 0] += np.pi
+            sarc["angle"] = angle
+            sarcs.append(
+                sarc[["frame", "x", "y", "length", "width", "angle", "zdiscs"]]
+            )
+        sarcs = pd.concat(sarcs).reset_index().drop("index", axis=1)
+
         if save_output:
-            np.save(f"{self.output_dir}/sarcomeres-info.npy", sarc_info)
+            self._save_dataframe(sarcs, "sarcomeres")
 
-        return myofibrils, sarc_info
+        return myofibrils, sarcs
