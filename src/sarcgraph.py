@@ -780,7 +780,7 @@ class SarcGraph:
         score_threshold: float = 0.01,
         angle_threshold: float = 1.2,
         save_output: bool = True,
-    ) -> Tuple[nx.Graph, np.ndarray]:
+    ) -> Tuple[pd.DataFrame, List(nx.Graph)]:
         """Detect sarcomeres in a video/image. The input could be the address
         to the video/image sample, raw frames as a numpy array, segmented
         zdiscs information in a pandas dataframe, or a dataframe of tracked
@@ -843,10 +843,13 @@ class SarcGraph:
 
         Returns
         -------
-        nx.Graph:
+        pd.DataFrame
+            Detected sarcomeres information. Columns are ``frame`` (frame
+            number), ``zdiscs`` (particle id of the two zdiscs forming a
+            sarcomere), ``x`` and ``y`` (sarcomere center position), ``length``
+            , ``width``, and ``angle`` (sarcomere length, width, and angle).
+        List[nx.Graph]:
             A list of graphs each indicating connected sarcomeres (myofibrils)
-        np.array:
-            Information of all detected and tracked sarcomeres
 
         Notes
         -----
@@ -945,4 +948,4 @@ class SarcGraph:
         if save_output:
             self._save_dataframe(sarcs, "sarcomeres")
 
-        return myofibrils, sarcs
+        return sarcs, myofibrils
