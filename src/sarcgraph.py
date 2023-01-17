@@ -443,6 +443,9 @@ class SarcGraph:
             tracked_zdiscs.freq < num_frames
         ]
 
+        if partially_tracked_zdiscs.empty:
+            return fully_tracked_zdiscs
+
         partially_tracked_clusters = (
             partially_tracked_zdiscs[["x", "y", "particle"]]
             .groupby(by=["particle"])
@@ -559,7 +562,8 @@ class SarcGraph:
             except Exception:
                 try:
                     segmented_zdiscs = pd.read_csv(
-                        f"{self.output_dir}/segmented-zdiscs.csv"
+                        f"{self.output_dir}/segmented-zdiscs.csv",
+                        index_col=[0],
                     )
                 except FileNotFoundError:
                     raise FileNotFoundError(
@@ -579,6 +583,7 @@ class SarcGraph:
                 "segmented_zdiscs must contain at least three columns: 'x', "
                 "'y', 'frame'."
             )
+
         # skip tracking if the sample is an image
         if self.file_type == "image":
             segmented_zdiscs["particle"] = np.arange(len(segmented_zdiscs))
@@ -925,7 +930,7 @@ class SarcGraph:
             except Exception:
                 try:
                     tracked_zdiscs = pd.read_csv(
-                        f"{self.output_dir}/tracked-zdiscs.csv"
+                        f"{self.output_dir}/tracked-zdiscs.csv", index_col=[0]
                     )
                 except FileNotFoundError:
                     raise FileNotFoundError(
