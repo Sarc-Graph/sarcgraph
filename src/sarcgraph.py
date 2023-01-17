@@ -198,7 +198,11 @@ class SarcGraph:
                     " input."
                 )
             else:
+                if not isinstance(file_path, str):
+                    raise TypeError("file_path must be a string.")
                 raw_frames = self._data_loader(file_path)
+        if not isinstance(raw_frames, np.ndarray):
+            raise TypeError("raw_frames must be a numpy array.")
         raw_frames_gray = self._to_gray(raw_frames)
         raw_frames_filtered = self._filter_frames(raw_frames_gray, sigma)
         if save_output:
@@ -226,6 +230,15 @@ class SarcGraph:
         -------
         List[np.ndarray]
         """
+        if filtered_frames.ndim != 3:
+            raise ValueError(
+                "The input must be a 3d numpy array: (frames, " "dim 1, dim 2)"
+            )
+        if not isinstance(min_length, int):
+            try:
+                min_length = int(min_length)
+            except ValueError:
+                raise ValueError("min_length must be an integer.") from None
         length_checker = np.vectorize(len)
         valid_contours = []
         for frame in filtered_frames:
@@ -242,7 +255,7 @@ class SarcGraph:
             self._save_numpy(valid_contours, file_name="contours")
         return valid_contours
 
-    def _process_contour(self, contour: np.ndarray) -> np.ndarray:
+    def _process_contour(self, contour: Union[List, np.ndarray]) -> np.ndarray:
         """Computes the center location of a zdisc as well as its two end
         points given its 2d contour.
 
@@ -255,24 +268,23 @@ class SarcGraph:
         np.ndarray, shape=(6,)
             zdisc center, end point 1, end point 2
         """
-        if len(contour) < 2:
-            raise ValueError("A contour must have at least 3 points.")
-        # coordinates of the center of a contour
+        if len(contour) < 3:
+            raise ValueError("A contour must have at least 3 coordinates.")
+        # center of a contour
         center_coords = np.mean(contour, axis=0)
-        # find zdisc direction by matching furthest points on the contour
+        # coordinates of the two points on the contour with maximum distance
         dist_mat = distance_matrix(contour, contour)
         indices = np.unravel_index(dist_mat.argmax(), dist_mat.shape)
-        # coordinates of the two points on the contour with maximum distance
         p1, p2 = contour[indices[0]], contour[indices[1]]
         return np.hstack((center_coords, p1, p2))
 
-    def _zdiscs_to_pandas(self, zdiscs_all: list) -> pd.DataFrame:
+    def _zdiscs_to_pandas(self, zdiscs_all: List[np.ndarray]) -> pd.DataFrame:
         """Creates a pandas dataframe from the information of detected zdiscs
         in all frames.
 
         Parameters
         ----------
-        zdiscs_all : List
+        zdiscs_all : List[np.ndarray]
             A list of numpy arrays each containing information of detected
             zdiscs in a frame, (zdisc center, end point 1, end point 2)
 
@@ -284,14 +296,22 @@ class SarcGraph:
             end points positions).
         """
         if self.file_type == "video" and len(zdiscs_all) < 2:
-            raise ValueError("Video is not loaded correctly.")
+            raise ValueError(
+                "Only one frame detected. Video is not loaded correctly."
+            )
+        if self.file_type == "image" and len(zdiscs_all) > 1:
+            raise ValueError(
+                "More than one frame detected. The image is not loaded "
+                "correctly."
+            )
         data_frame = []
         for i, zdiscs_frame in enumerate(zdiscs_all):
             if type(zdiscs_frame) != np.ndarray:
                 raise TypeError("Input should be a list of numpy arrays.")
-            if zdiscs_frame.shape[-1] != 6:
+            if zdiscs_frame.ndim != 2 or zdiscs_frame.shape[1] != 6:
                 raise ValueError(
-                    "Enough information is not included in zdiscs_info_all"
+                    "Each numpy array must have the shape: (number of zdiscs, "
+                    "6)"
                 )
             frame_id = i * np.ones((len(zdiscs_frame), 1), dtype=int)
             zdiscs_frame_extended = np.hstack((frame_id, zdiscs_frame))
