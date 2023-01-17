@@ -33,6 +33,13 @@ class SarcGraph:
             ``image`` for single-frame samples and ``video`` for multi-frame
             samples, by default ``video``
         """
+        if file_type not in ["video", "image"]:
+            raise ValueError(
+                f"{file_type} is not recognized as a valid file_type. Choose "
+                "from ['video', 'image']."
+            )
+        if not isinstance(output_dir, str):
+            raise TypeError("output_dir must be a string.")
         self.output_dir = output_dir
         self.file_type = file_type
 
@@ -72,13 +79,18 @@ class SarcGraph:
             All frames in gray scale
         """
         frames_gray = skvideo.utils.rgb2gray(frames)
-        if self.file_type == "video":
-            if frames_gray.shape[0] < 2:
-                raise ValueError(
-                    "Video is not loaded correctly! Try manually loading the "
-                    "video file."
-                )
-        return skvideo.utils.rgb2gray(frames)
+        if self.file_type == "video" and frames_gray.shape[0] < 2:
+            raise ValueError(
+                "Failed to load video correctly! Manually load the video into "
+                "a numpy array and input to the function as raw_frames."
+            )
+        if self.file_type == "image" and frames_gray.shape[0] > 1:
+            raise ValueError(
+                "Trying to load a video while file_type='image'. Load the "
+                "image manually or change the file_type to 'video."
+            )
+
+        return frames_gray
 
     def _save_numpy(
         self, data: Union[List, np.ndarray], file_name: str
@@ -90,6 +102,8 @@ class SarcGraph:
         data : np.ndarray
         file_name: str
         """
+        if not isinstance(file_name, str):
+            raise TypeError("file_name must be a string.")
         Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
         if isinstance(data, Union[List, np.ndarray]):
             np.save(
@@ -107,6 +121,8 @@ class SarcGraph:
         data : pd.DataFrame
         file_name: str
         """
+        if not isinstance(file_name, str):
+            raise TypeError("file_name must be a string.")
         Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
         if isinstance(data, pd.DataFrame):
             data.to_csv(f"./{self.output_dir}/{file_name}.csv")
@@ -130,13 +146,20 @@ class SarcGraph:
         -------
         np.ndarray, shape=(frames, dim_1, dim_2)
         """
-        if frames.shape[-1] != 1:
+        if frames.ndim > 4 or frames.ndim < 3:
             raise ValueError(
-                "frames should be passed as a numpy array of the shape (frames"
-                ", dim_1, dim_2, channels=1)"
+                "Input array must have the shape (frames, dim_1, dim_2, "
+                "channels=1 (optional))"
             )
-        filtered_frames = np.zeros(frames.shape[:-1])
-        for i, frame in enumerate(frames[:, :, :, 0]):
+        if frames.ndim == 4:
+            if frames.shape[3] != 1:
+                raise ValueError(
+                    "Number of channels in the input array must be 1. Input "
+                    "shape: (frames, dim_1, dim_2, channels=1 (optional))"
+                )
+            frames = frames[:, :, :, 0]
+        filtered_frames = np.zeros(frames.shape)
+        for i, frame in enumerate(frames):
             laplacian = laplace(frame)
             filtered_frames[i] = gaussian(laplacian, sigma=sigma)
         return filtered_frames
