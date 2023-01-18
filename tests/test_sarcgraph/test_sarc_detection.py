@@ -1,6 +1,4 @@
 import numpy as np
-import pandas as pd
-import os
 from src.sarcgraph import SarcGraph
 
 sg_vid = SarcGraph("test", "video")
@@ -8,7 +6,7 @@ sg_img = SarcGraph("test", "image")
 
 
 def test_sarcomere_detection_accuracy():
-    sarcomeres, _ = sg_vid.sarcomere_detection("samples/sample_0.avi")
+    sarcomeres, _ = sg_vid.sarcomere_detection("./samples/sample_0.avi")
     groupby_sarcs = sarcomeres.groupby("sarc_id")
     mean_len = groupby_sarcs.length.transform("mean")
     sarcomeres["length_norm"] = (sarcomeres.length - mean_len) / mean_len
