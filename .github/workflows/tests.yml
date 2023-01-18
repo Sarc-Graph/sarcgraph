@@ -25,7 +25,9 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml
+        pwd
+        ls
+        pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
