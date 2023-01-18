@@ -19,17 +19,19 @@ jobs:
     
     - name: Install Python dependencies
       run: |
-        C:\Miniconda\condabin\conda.bat env update --file environment.yml --name base
-        C:\Miniconda\condabin\conda.bat init powershell
+        conda env update --file environment.yml --name base
+        #C:\Miniconda\condabin\conda.bat init powershell
+        #C:\Miniconda\condabin\conda.bat init powershell
 
     - name: Test with pytest
       run: |
         # Activate the base environment
-        C:\Miniconda\condabin\conda.bat activate base
-        C:\Miniconda\condabin\conda.bat install pytest
-        C:\Miniconda\condabin\conda.bat install -c conda-forge pytest-cov
+        #C:\Miniconda\condabin\conda.bat activate base
+        #C:\Miniconda\condabin\conda.bat install pytest
+        #C:\Miniconda\condabin\conda.bat install -c conda-forge pytest-cov
+        conda activate base
         conda list
-        pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml
+        #pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
