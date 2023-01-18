@@ -13,17 +13,19 @@ jobs:
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
-        python-version: 3.10.8
+        python-version: 3.10.9
     
     - uses: FedericoCarboni/setup-ffmpeg@v2
     
     - name: Install Python dependencies
       run: |
-        python3 -m pip install --upgrade pip #sudo apt install -y $(grep -o ^[^#][[:alnum:]-]* "packages.list")
-        pip3 install -r requirements.txt
+        C:\Miniconda\condabin\conda.bat env update --file environment.yml --name base
+        C:\Miniconda\condabin\conda.bat init powershell
 
     - name: Test with pytest
       run: |
+        # Activate the base environment
+        C:\Miniconda\condabin\conda.bat activate base
         pytest --exitfirst --verbose --failed-first \
         --cov=src --cov-report=xml
     
