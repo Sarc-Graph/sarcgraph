@@ -31,7 +31,6 @@ kiwisolver==1.4.4
 locket==1.0.0
 matplotlib==3.5.3
 matplotlib-inline==0.1.6
-mkl-fft
 mkl-random==1.2.2
 mkl-service==2.4.0
 munkres==1.1.4
