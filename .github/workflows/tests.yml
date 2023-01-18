@@ -10,22 +10,22 @@ jobs:
 
     - uses: actions/checkout@v3
 
-    - name: Set up Python 3.8
+    - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
-        python-version: 3.8
+        python-version: 3.10.9
     
-    - uses: FedericoCarboni/setup-ffmpeg@v2
+    - uses: FedericoCarboni/setup-ffmpeg@v3
     
     - name: Install Python dependencies
       run: |
-        C:\Miniconda\condabin\conda.bat create --name sg2 --file environment.yml
+        C:\Miniconda\condabin\conda.bat env update --file environment.yml --name base
         C:\Miniconda\condabin\conda.bat init powershell
 
     - name: Test with pytest
       run: |
         # Activate the base environment
-        C:\Miniconda\condabin\conda.bat activate sg2
+        C:\Miniconda\condabin\conda.bat activate base
         pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml
     
     - name: Upload coverage to Codecov
