@@ -15,7 +15,7 @@ jobs:
       with:
         python-version: 3.10.9
     
-    - uses: FedericoCarboni/setup-ffmpeg@v3
+    - uses: FedericoCarboni/setup-ffmpeg@v2
     
     - name: Install Python dependencies
       run: |
