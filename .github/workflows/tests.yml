@@ -26,8 +26,7 @@ jobs:
       run: |
         # Activate the base environment
         C:\Miniconda\condabin\conda.bat activate base
-        pytest --exitfirst --verbose --failed-first \
-        --cov=src --cov-report=xml
+        pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
