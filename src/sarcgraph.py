@@ -105,7 +105,7 @@ class SarcGraph:
         if not isinstance(file_name, str):
             raise TypeError("file_name must be a string.")
         Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
-        if isinstance(data, Union[List, np.ndarray]):
+        if isinstance(data, np.ndarray) or isinstance(data, List):
             np.save(
                 f"./{self.output_dir}/{file_name}.npy", data, allow_pickle=True
             )

@@ -20,14 +20,14 @@ jobs:
       with:
         activate-environment: test-env
         environment-file: environment.yml
-        python-version: 3.8
+        python-version: 3.10.9
         auto-activate-base: false
 
     - name: Test with pytest
       run: |
         pwd
         ls
-        pytest --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
+        pytest tests/ --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
