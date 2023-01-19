@@ -11,9 +11,6 @@ jobs:
     steps:
 
     - uses: actions/checkout@v3
-
-    - name: Set up ffmpeg
-      uses: FedericoCarboni/setup-ffmpeg@v2
     
     - name: Set up Conda
       uses: conda-incubator/setup-miniconda@v2
