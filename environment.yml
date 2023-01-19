@@ -1,18 +1,16 @@
-name: test-env
+name: sg2
 channels:
-  - conda-forge
   - defaults
 dependencies:
-  - anaconda-client
-  - pip
-  - numpy
-  - scipy
-  - pandas
-  - trackpy
-  - networkx
-  - scikit-learn
-  - scikit-image
-  - sk-video
-  - ffmpeg
-  - pytest
-  - pytest-cov
+  - ffmpeg=4.3.1
+  - networkx=2.7.1
+  - numpy=1.23.5
+  - pandas=1.4.2
+  - pytest=7.1.2
+  - pytest-cov=4.0.0
+  - python=3.10.9
+  - scikit-image=0.19.2
+  - scikit-learn=1.0.2
+  - scipy=1.7.3
+  - sk-video=1.1.10
+  - trackpy=0.5.0
