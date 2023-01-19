@@ -12,8 +12,6 @@ def test_process_input():
     filtered_frames_1 = sg_vid._process_input("samples/sample_0.avi")
     filtered_frames_2 = sg_vid._process_input(raw_frames=np.zeros((4, 58, 28)))
     filtered_frames_3 = sg_img._process_input(raw_frames=np.zeros((58, 28)))
-    with pytest.raises(TypeError):
-        sg_img._process_input(np.zeros((58, 28)))
     assert filtered_frames_1.shape == (80, 368, 368)
     assert filtered_frames_2.shape == (4, 58, 28)
     assert filtered_frames_3.shape == (1, 58, 28)

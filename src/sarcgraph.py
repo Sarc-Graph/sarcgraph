@@ -194,13 +194,17 @@ class SarcGraph:
         if raw_frames is None:
             if file_path is None:
                 raise ValueError(
-                    "Either ``file_path`` or ``raw_frames`` should be given as"
+                    "Either file_path or raw_frames should be given as"
                     " input."
                 )
             else:
-                if not isinstance(file_path, str):
-                    raise TypeError("file_path must be a string.")
-                raw_frames = self._data_loader(file_path)
+                try:
+                    raw_frames = self._data_loader(file_path)
+                except Exception:
+                    raise ValueError(
+                        f"Not able to load a file from {file_path}."
+                    )
+
         if not isinstance(raw_frames, np.ndarray):
             raise TypeError("raw_frames must be a numpy array.")
         raw_frames_gray = self._to_gray(raw_frames)
@@ -369,14 +373,6 @@ class SarcGraph:
         searches for saved ``raw-frames.npy`` in the specified output directory
         , ``output_dir``.
         """
-        if file_path is None and raw_frames is None:
-            try:
-                raw_frames = np.load(f"{self.output_dir}/raw-frames.npy")
-            except FileNotFoundError:
-                raise FileNotFoundError(
-                    "Can't load raw_frames, 'raw-frames.npy' doesn't exist in "
-                    f"'{self.output_dir}/'. Specify file_path or raw_frames."
-                ) from None
         filtered_frames = self._process_input(
             file_path, raw_frames, sigma, save_output
         )
@@ -555,23 +551,9 @@ class SarcGraph:
         related partially tracked zdiscs using the OPTICS algorithm
         """
         if segmented_zdiscs is None:
-            try:
-                segmented_zdiscs = self.zdisc_segmentation(
-                    file_path, raw_frames, sigma, min_length, save_output
-                )
-            except Exception:
-                try:
-                    segmented_zdiscs = pd.read_csv(
-                        f"{self.output_dir}/segmented-zdiscs.csv",
-                        index_col=[0],
-                    )
-                except FileNotFoundError:
-                    raise FileNotFoundError(
-                        "Can't load raw_frames nor segmented_zdiscs, "
-                        "'raw-frames.npy' or 'segmented-zdiscs.csv' don't "
-                        f"exist in '{self.output_dir}/'. Specify file_path, "
-                        "raw_frames, or segmented_zdiscs."
-                    ) from None
+            segmented_zdiscs = self.zdisc_segmentation(
+                file_path, raw_frames, sigma, min_length, save_output
+            )
 
         correct_columns = set(("frame", "x", "y")).issubset(
             set(segmented_zdiscs.columns)
@@ -913,33 +895,19 @@ class SarcGraph:
         SarcGraph().zdisc_tracking: tracks detected Z-Discs in a video sample
         """
         if tracked_zdiscs is None:
-            try:
-                tracked_zdiscs = self.zdisc_tracking(
-                    file_path,
-                    raw_frames,
-                    segmented_zdiscs,
-                    sigma,
-                    min_length,
-                    tp_depth,
-                    full_track_ratio,
-                    skip_merging,
-                    optics_eps,
-                    optics_min_samples,
-                    save_output,
-                )
-            except Exception:
-                try:
-                    tracked_zdiscs = pd.read_csv(
-                        f"{self.output_dir}/tracked-zdiscs.csv", index_col=[0]
-                    )
-                except FileNotFoundError:
-                    raise FileNotFoundError(
-                        "Can't load raw_frames, segmented_zdiscs, or tracked "
-                        "zdiscs, 'raw-frames.npy', 'segmented-zdiscs.csv', or "
-                        "'tracked-zdiscs.csv' don't exist in"
-                        f"'{self.output_dir}/'. Specify file_path, raw_frames,"
-                        " segmented_zdiscs, or tracked_zdiscs."
-                    ) from None
+            tracked_zdiscs = self.zdisc_tracking(
+                file_path,
+                raw_frames,
+                segmented_zdiscs,
+                sigma,
+                min_length,
+                tp_depth,
+                full_track_ratio,
+                skip_merging,
+                optics_eps,
+                optics_min_samples,
+                save_output,
+            )
 
         zdiscs_clusters = (
             tracked_zdiscs.groupby("particle")

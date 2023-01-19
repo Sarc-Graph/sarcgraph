@@ -37,9 +37,13 @@ def test_zdisc_tracking():
     ].count()
     assert np.array_equal(zdiscs_num_in_frames, 80 * np.ones(81))
     assert len(tracked_zdiscs.particle.unique()) == 81
-    sg_vid_new = SarcGraph("tests/test_data")
-    tracked_zdiscs = sg_vid_new.zdisc_tracking(save_output=False)
+    segmented_zdiscs = pd.read_csv(
+        "tests/test_data/segmented-zdiscs.csv", index_col=[0]
+    )
     expected_tracked_zdiscs = pd.read_csv(
-        f"{sg_vid_new.output_dir}/test-tracked-zdiscs.csv", index_col=[0]
+        "tests/test_data/test-tracked-zdiscs.csv", index_col=[0]
+    )
+    tracked_zdiscs = sg_vid.zdisc_tracking(
+        segmented_zdiscs=segmented_zdiscs, save_output=False
     )
     assert tracked_zdiscs.equals(expected_tracked_zdiscs)

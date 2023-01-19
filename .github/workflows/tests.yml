@@ -27,7 +27,7 @@ jobs:
       run: |
         pwd
         ls
-        pytest --exitfirst --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
+        pytest --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
