@@ -25,8 +25,7 @@ jobs:
 
     - name: Test with pytest
       run: |
-        pwd
-        ls
+        conda install -c conda-forge ffmpeg
         pytest tests/ --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov

@@ -12,7 +12,7 @@ dependencies:
   - networkx
   - scikit-learn
   - scikit-image
-  - ffmpeg
   - sk-video
+  - ffmpeg
   - pytest
   - pytest-cov
