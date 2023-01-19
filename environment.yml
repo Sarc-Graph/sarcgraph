@@ -1,16 +1,17 @@
 name: sg2
 channels:
   - defaults
+  - conda-forge
 dependencies:
-  - ffmpeg=4.3.1
-  - networkx=2.7.1
-  - numpy=1.23.5
-  - pandas=1.4.2
-  - pytest=7.1.2
-  - pytest-cov=4.0.0
-  - python=3.10.9
-  - scikit-image=0.19.2
-  - scikit-learn=1.0.2
-  - scipy=1.7.3
-  - sk-video=1.1.10
-  - trackpy=0.5.0
+  - ffmpeg=4.2.2
+  - networkx
+  - numpy
+  - pandas
+  - pytest
+  - pytest-cov
+  - python
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - sk-video
+  - trackpy
