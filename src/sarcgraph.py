@@ -875,9 +875,10 @@ class SarcGraph:
         -------
         pd.DataFrame
             Detected sarcomeres information. Columns are ``frame`` (frame
-            number), ``zdiscs`` (particle id of the two zdiscs forming a
-            sarcomere), ``x`` and ``y`` (sarcomere center position), ``length``
-            , ``width``, and ``angle`` (sarcomere length, width, and angle).
+            number), ``sarc_id`` (sarcomere id), ``zdiscs`` (particle id of the
+            two zdiscs forming a sarcomere), ``x`` and ``y`` (sarcomere center
+            position), ``length``, ``width``, and ``angle`` (sarcomere length,
+            width, and angle).
         List[nx.Graph]:
             A list of graphs each indicating connected sarcomeres (myofibrils)
 

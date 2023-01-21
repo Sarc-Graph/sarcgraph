@@ -6,6 +6,7 @@ import pickle
 import imageio
 import shutil
 import json
+import os
 
 from scipy import signal
 from scipy.signal import find_peaks
@@ -14,16 +15,28 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
-
 from pathlib import Path
+from typing import List, Union, Tuple
 
 from src.sarcgraph import SarcGraph
 
 
 class SarcGraphTools:
-    def __init__(self, input_dir):
+    def __init__(
+        self,
+        input_dir: str = "test-run",
+        quality: int = 300,
+        include_eps: bool = False,
+        save_results: bool = True,
+    ):
+        if not os.path.exists(input_dir):
+            raise FileNotFoundError(f"{input_dir}/ directory was not found!")
+
         self.input_dir = input_dir
         self.output_dir = input_dir
+        self.quality = quality
+        self.include_eps = include_eps
+        self.save_results = save_results
         self.visualization = self.Visualization(self)
         self.time_series = self.TimeSeries(self)
         self.analysis = self.Analysis(self)
@@ -32,12 +45,26 @@ class SarcGraphTools:
         def __init__(self, sg_tools):
             self.sg_tools = sg_tools
 
-        def normalize(self, data):
-            mu = np.mean(data, axis=1, keepdims=True)
-            return (data - mu) / mu
+        def _dtw_distance(self, s1: np.ndarray, s2: np.ndarray) -> np.ndarray:
+            """Compute distance based on dynamic time warping (DTW) between
+            two 1D signals s1 and s2.
 
-        def dtw_distance(self, s1, s2):
-            """Compute distance based on dynamic time warping (DTW)"""
+            Parameters
+            ----------
+            s1 : np.ndarray
+                1D signal
+            s2 : np.ndarray
+                1D signal
+
+            Returns
+            -------
+            np.ndarray
+                DTW distance between s1 and s2 based on euclidean distance.
+            """
+            if (not isinstance(s1, np.ndarray)) or (
+                not isinstance(s2, np.ndarray)
+            ):
+                raise TypeError("s1 and s2 must be 1D numpy arrays.")
             if s1.ndim == 1 and s2.ndim == 1:
                 n = len(s1)
                 m = len(s2)
@@ -49,143 +76,190 @@ class SarcGraphTools:
                         dtw[i, j] = dist[i - 1, j - 1] + min(
                             dtw[i - 1, j], dtw[i, j - 1], dtw[i - 1, j - 1]
                         )
-            return np.sqrt(dtw[-1, -1])
+                return np.sqrt(dtw[-1, -1])
+            else:
+                raise ValueError("s1 and s2 must be 1D numpy arrays.")
 
-        def gpr(self, data):
-            num_frames = len(data)
+        def _gpr(self, s: np.ndarray) -> np.ndarray:
+            """Applies Gaussian Process Regression (GPR) on a 1D signal
+
+            Parameters
+            ----------
+            s : np.ndarray
+
+            Returns
+            -------
+            np.ndarray
+
+            Notes
+            -----
+            For more information on GPR check
+            https://scikit-learn.org/stable/modules/gaussian_process.html
+            """
+            num_frames = len(s)
 
             kernel = 1.0 * RBF(
-                length_scale=1.0, length_scale_bounds=(1e-5, 10.0)
+                length_scale=1.0, length_scale_bounds=(1e-5, 1e1)
             ) + 1.0 * WhiteKernel(
-                noise_level=1.0, noise_level_bounds=(1e-5, 10.0)
+                noise_level=1.0, noise_level_bounds=(1e-5, 1e1)
             )
             model = GaussianProcessRegressor(kernel=kernel, normalize_y=True)
-            xdata = np.arange(num_frames)
-            ydata = data
+            xdata = np.arange(num_frames).reshape(-1, 1)
+            xhat = xdata
+            ydata = s.reshape(-1, 1)
 
-            remove_indices = np.logical_not(np.isnan(ydata))
-            xhat = xdata.reshape(-1, 1)
-            xdata = xdata[remove_indices].reshape(-1, 1)
-            ydata = ydata[remove_indices].reshape(-1, 1)
+            remove_indices = np.where(np.isnan(ydata.reshape(-1)))[0]
+            xdata = np.delete(xdata, remove_indices, axis=0)
+            ydata = np.delete(ydata, remove_indices, axis=0)
 
             model.fit(xdata, ydata)
             yhat = model.predict(xhat)
 
             return yhat.reshape(-1)
 
-        def sarc_info_gpr(self, save_data=True):
-            # --> use GPR to interpolate sarcomere length for all frames
-            sarcs_info = np.load(
-                f"{self.sg_tools.input_dir}/sarcomeres-info.npy"
-            )
+        def _sarcomeres_length_normalize(
+            self, sarcomeres: pd.DataFrame
+        ) -> pd.DataFrame:
+            groupby_sarc_id = sarcomeres.groupby("sarc_id")
+            mean_length = groupby_sarc_id.length.transform("mean")
+            sarcomeres["length_norm"] = (
+                sarcomeres.length - mean_length
+            ) / mean_length
+            return sarcomeres
 
-            sarcs_info_gpr = np.zeros(sarcs_info.shape)
-            for info_type in range(sarcs_info.shape[0]):
-                for particle_num in range(sarcs_info.shape[1]):
-                    sarcs_info_gpr[info_type, particle_num, :] = self.gpr(
-                        sarcs_info[info_type, particle_num, :]
-                    )
-            if save_data:
-                np.save(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy",
-                    sarcs_info_gpr,
+        def sarcomeres_gpr(self) -> pd.DataFrame:
+            """Applies Gaussian Process Regression (GPR) on the output of the
+            sarcomere detection algorithm to reduce the noise and fill in
+            missing data.
+
+            Returns
+            -------
+            pd.DataFrame
+
+            Notes
+            -----
+            For more information on GPR check
+            https://scikit-learn.org/stable/modules/gaussian_process.html
+
+            See Also
+            --------
+            SarcGraph().sarcomere_detection: detects and tracks sarcomeres in a
+            video/image
+            """
+            sarcomeres = self.sg_tools._load_sarcomeres()
+            cols = [
+                "frame",
+                "sarc_id",
+                "zdiscs",
+                "x",
+                "y",
+                "length",
+                "angle",
+                "width",
+            ]
+            if not isinstance(sarcomeres, pd.DataFrame):
+                raise TypeError("input should be a pd.Dataframe.")
+            if set(sarcomeres.columns) != set(cols):
+                raise ValueError(
+                    "input format should match the output of"
+                    "SarcGraph().sarcomere_detection function."
                 )
-            return sarcs_info_gpr
+            num_sarcs = sarcomeres.sarc_id.max() + 1
+            for info_type in cols[3:]:
+                for sarc_num in range(num_sarcs):
+                    row_mask = sarcomeres.sarc_id == sarc_num
+                    s = sarcomeres.loc[row_mask, info_type].to_numpy()
+                    sarcomeres.loc[row_mask, info_type] = self._gpr(s)
+            sarcomeres = self._sarcomeres_length_normalize(sarcomeres)
+            if self.sg_tools.save_results:
+                sarcomeres.to_csv(
+                    f"./{self.sg_tools.output_dir}/sarcomeres-gpr.csv"
+                )
+            return sarcomeres
 
     class Visualization:
         def __init__(self, sg_tools):
             self.sg_tools = sg_tools
 
-        def zdiscs_and_sarcs(self, frame_num=0, include_eps=False):
-            """Visualize the results of z-disk segmentation."""
-            # load raw image file
-            raw_img = np.load(f"{self.sg_tools.input_dir}/raw-frames.npy")[
-                frame_num
-            ]
+        def zdiscs_and_sarcs(self, frame_num: int = 0):
+            """Visualize and save the plot of segmented zdiscs and detected
+            sarcomeres in the chosen frame
 
-            # load segmented zdisc contours
-            contour_list = np.load(
-                f"{self.sg_tools.input_dir}/contours.npy", allow_pickle=True
-            )[frame_num]
+            Parameters
+            ----------
+            frame_num : int, by default 0
+            """
+            raw_frame = self.sg_tools._load_raw_frames()[frame_num]
+            contours = self.sg_tools._load_contours()[frame_num]
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
 
-            # load sarcomere info
-            sarc_data = np.load(
-                f"{self.sg_tools.input_dir}/sarcomeres-info.npy"
-            )[:, :, frame_num]
-            sarc_x = sarc_data[0, :]
-            sarc_y = sarc_data[1, :]
+            sarcs_x = sarcomeres[sarcomeres.frame == frame_num].x
+            sarcs_y = sarcomeres[sarcomeres.frame == frame_num].y
 
             ax = plt.axes()
             ax.set_aspect("equal")
-            ax.imshow(raw_img[:, :, 0], cmap=plt.cm.gray)
+            ax.imshow(raw_frame[:, :, 0], cmap=plt.cm.gray)
             ax.set_title(
-                f"{len(contour_list)} z-disks and {len(sarc_x)} sarcomeres\n"
+                f"{len(contours)} z-disks and {len(sarcs_x)} sarcomeres\n"
                 f"found in frame {frame_num}"
             )
-            for contour in contour_list:
+            for contour in contours:
                 ax.plot(contour[:, 1], contour[:, 0], "#0000cc", linewidth=1)
-            ax.plot(sarc_y, sarc_x, "*", color="#cc0000", markersize=3)
+            ax.plot(sarcs_y, sarcs_x, "*", color="#cc0000", markersize=3)
             ax.set_xticks([])
             ax.set_yticks([])
 
             output_file = (
                 f"{self.sg_tools.output_dir}/zdiscs-sarcs-frame-{frame_num}"
             )
-            Path(f"{self.sg_tools.output_dir}").mkdir(
-                parents=True, exist_ok=True
+            plt.savefig(
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
+                bbox_inches="tight",
             )
-            plt.savefig(f"{output_file}.png", dpi=300, bbox_inches="tight")
-            if include_eps:
+            if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
         def contraction(self):
-            "Visualize detected and tracked sarcomeres."
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.time_series.sarc_info_gpr(
-                    save_data=False
-                )
+            """Visualize all detected sarcomeres in every frame according to
+            normalized fraction length and save as a gif file.
+            """
+            raw_frames = self.sg_tools._load_raw_frames()
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
 
-            sarcs_x = sarcs_data[0]
-            sarcs_y = sarcs_data[1]
-            sarcs_length = sarcs_data[2]
-            num_frames = sarcs_x.shape[-1]
-
-            sarcs_length_mean = np.nanmean(sarcs_length, axis=1, keepdims=True)
-            sarcs_length_norm = (
-                sarcs_length - sarcs_length_mean
-            ) / sarcs_length_mean
-            # --> plot every frame, plot every sarcomere according to normalized
-            # fraction length
-            color_matrix = np.less(np.abs(sarcs_length_norm), 0.2) * (
-                sarcs_length_norm * 2.5 + 0.5
-            ) + np.greater(sarcs_length_norm, 0.2)
+            num_frames = sarcomeres.frame.max() + 1
+            frames = sarcomeres.frame.to_numpy()
+            sarcs_x = sarcomeres.x.to_numpy()
+            sarcs_y = sarcomeres.y.to_numpy()
+            sarcs_length_norm = sarcomeres.length_norm.to_numpy()
 
             img_list = []
             Path("tmp").mkdir(parents=True, exist_ok=True)
             for frame_num in range(num_frames):
-                raw_img = np.load(f"{self.sg_tools.input_dir}/raw-frames.npy")[
-                    frame_num, :, :, 0
-                ]
+                indices = frames == frame_num
+                raw_frame = raw_frames[frame_num, :, :, 0]
 
                 plt.figure()
-                plt.imshow(raw_img, cmap=plt.cm.gray)
-                num_sarcs = sarcs_length_norm.shape[0]
-                for sarc_num in range(num_sarcs):
-                    c = color_matrix[sarc_num, frame_num]
-                    col = (1 - c, 0, c)
-                    y = sarcs_x[sarc_num, frame_num]
-                    x = sarcs_y[sarc_num, frame_num]
-                    plt.scatter(x, y, s=15, color=col, marker="o")
+                plt.imshow(raw_frame, cmap=plt.cm.gray)
+                y = sarcs_x[indices]
+                x = sarcs_y[indices]
+                length = np.abs(sarcs_length_norm[indices])
+                colors = np.piecewise(
+                    length,
+                    [length < 0.2, length >= 0.2],
+                    [lambda x: 2.5 * x + 0.5, lambda x: x],
+                )
+                for p_x, p_y, p_col in zip(x, y, colors):
+                    col = (1 - p_col, 0, p_col)
+                    plt.scatter(p_x, p_y, s=15, color=col, marker="o")
 
                 ax = plt.gca()
                 ax.set_xticks([])
                 ax.set_yticks([])
                 plt.savefig(
-                    f"tmp/frame-{frame_num}.png", dpi=300, bbox_inches="tight"
+                    f"tmp/frame-{frame_num}.png",
+                    dpi=self.sg_tools.quality,
+                    bbox_inches="tight",
                 )
                 plt.close()
                 img_list.append(imageio.imread(f"tmp/frame-{frame_num}.png"))
@@ -198,30 +272,30 @@ class SarcGraphTools:
                 f"GIF saved as '{self.sg_tools.output_dir}/contract_anim.gif'!"
             )
 
-        def plot_normalized_sarcs_length(self, quality=100, include_eps=False):
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.timeseries.sarc_info_gpr(
-                    save_data=False
-                )
+        def plot_normalized_sarcs_length(self):
+            """Plot normalized length of all detected sarcomeres vs frame
+            number.
+            """
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
 
-            sarcs_length_norm = self.sg_tools.time_series.normalize(
-                sarcs_data[2]
-            )
-            num_sarcs = sarcs_length_norm.shape[0]
+            num_sarcs = sarcomeres.sarc_id.max() + 1
+            sarc_ids = sarcomeres.sarc_id.to_numpy()
+            sarcs_length_norm = sarcomeres.length_norm.to_numpy()
+            groupby_frame = sarcomeres.groupby("frame")
+            sarcs_length_norm_median = groupby_frame.length_norm.median()
+            sarcs_length_norm_mean = groupby_frame.length_norm.mean()
 
-            plt.plot(sarcs_length_norm.T, linewidth=0.25)
+            for sarc_id in range(num_sarcs):
+                indices = sarc_ids == sarc_id
+                plt.plot(sarcs_length_norm[indices], linewidth=0.25)
             plt.plot(
-                np.median(sarcs_length_norm, axis=0),
+                sarcs_length_norm_median,
                 "k-",
                 linewidth=3,
                 label="median curve",
             )
             plt.plot(
-                np.mean(sarcs_length_norm, axis=0),
+                sarcs_length_norm_mean,
                 "--",
                 color=(0.5, 0.5, 0.5),
                 linewidth=3,
@@ -230,28 +304,26 @@ class SarcGraphTools:
             plt.xlabel("frame")
             plt.ylabel("normalized length")
             plt.title(
-                f"timeseries data, tracked and normalized, {num_sarcs} sarcomeres"
+                f"timeseries data, tracked and normalized, {num_sarcs} "
+                "sarcomeres"
             )
             plt.ylim((-0.1, 0.1))
             plt.legend()
             plt.tight_layout()
-
+            output_file = (
+                f"{self.sg_tools.output_dir}/normalized_sarcomeres_length"
+            )
             plt.savefig(
-                f"{self.sg_tools.output_dir}/normalized_sarcomeres_length_plot.png",
-                dpi=quality,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"{self.sg_tools.output_dir}/normalized_sarcomeres_length_plot.eps",
-                    bbox_inches="tight",
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_OOP(self, quality=100, include_eps=False):
-            try:
-                OOP = np.load(f"{self.sg_tools.output_dir}/recovered_OOP.npy")
-            except FileNotFoundError:
-                OOP, _ = self.sg_tools.analysis.compute_OOP(save_data=False)
+        def plot_OOP(self):
+            """Plot recovered Orientational Order Parameter."""
+            OOP = self.sg_tools._load_recovered_info("OOP")
 
             plt.figure(figsize=(5, 5))
             plt.subplot(1, 1, 1)
@@ -260,22 +332,18 @@ class SarcGraphTools:
             plt.title("recovered Orientational Order Parameter")
             plt.xlabel("frames")
 
+            output_file = f"{self.sg_tools.output_dir}/recovered_OOP"
             plt.savefig(
-                f"{self.sg_tools.output_dir}/recovered_OOP_plot.png",
-                dpi=quality,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"{self.sg_tools.output_dir}/recovered_OOP_plot.eps",
-                    bbox_inches="tight",
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_F(self, include_eps=False):
-            try:
-                F = np.load(f"{self.sg_tools.output_dir}/recovered_F.npy")
-            except FileNotFoundError:
-                F, _ = self.sg_tools.analysis.compute_F(save_data=False)
+        def plot_F(self):
+            """Plot recovered deformation gradient."""
+            F = self.sg_tools._load_recovered_info("F")
 
             plt.figure(figsize=(5, 5))
             plt.subplot(1, 1, 1)
@@ -286,24 +354,18 @@ class SarcGraphTools:
             plt.legend()
             plt.title("recovered deformation gradient")
             plt.xlabel("frames")
+            output_file = f"{self.sg_tools.output_dir}/recovered_F"
             plt.savefig(
-                f"{self.sg_tools.output_dir}/recovered_F_plot.png",
-                dpi=300,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"{self.sg_tools.output_dir}/recovered_F_plot.eps",
-                    bbox_inches="tight",
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_J(self, include_eps=False):
-            """Analyze the Jacobian -- report timeseries parmeters. Must first run
-            compute_F_whole_movie()."""
-            try:
-                J = np.load(f"{self.sg_tools.output_dir}/recovered_J.npy")
-            except FileNotFoundError:
-                _, J = self.sg_tools.analysis.compute_F(save_data=False)
+        def plot_J(self):
+            """Plot recovered deformation jacobian."""
+            J = self.sg_tools._load_recovered_info("J")
             frames = np.arange(len(J))
 
             # compute the parameters of the timeseries
@@ -338,7 +400,8 @@ class SarcGraphTools:
                     )
 
             # detect peaks and valleys
-            # peaks_U, _ = find_peaks(data_med, threshold=th, distance=di, width=wi)
+            # peaks_U, _ = find_peaks(data_med, threshold=th, distance=di,
+            # width=wi)
             peaks_L, _ = find_peaks(
                 -1.0 * J_med, threshold=0.0, distance=10, width=5
             )
@@ -346,55 +409,34 @@ class SarcGraphTools:
             # plt.plot(x[peaks_U],data[peaks_U],'rx',markersize=10)
             plt.plot(frames[peaks_L], J[peaks_L], "rx", markersize=13)
             plt.title(
-                "frames contract: %i, relax: %i, flat: %i"
-                % (count_C, count_R, count_F)
+                f"frames contract: {count_C}, relax: {count_R}, flat: "
+                f"{count_F}"
             )
             plt.xlabel("frame number")
             plt.ylabel("determinate of average F")
             plt.tight_layout()
 
+            output_file = f"{self.sg_tools.output_dir}/recovered_J"
             plt.savefig(
-                f"{self.sg_tools.output_dir}/recovered_J_plot.png",
-                dpi=300,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"{self.sg_tools.output_dir}/recovered_J_plot.eps",
-                    bbox_inches="tight",
-                )
-            return
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def F_eigenval_animation(
-            self, quality=100, include_eps=False, save_data=True
-        ):
-            """Visualize the eigenvalues of F -- plot timeseries next to the movie.
-            Must first run compute_F_whole_movie()."""
-            try:
-                F_all = np.load(f"{self.sg_tools.output_dir}/recovered_F.npy")
-                J_all = np.load(f"{self.sg_tools.output_dir}/recovered_J.npy")
-            except FileNotFoundError:
-                F_all, J_all = self.sg_tools.analysis.compute_F(
-                    save_data=False
-                )
-
-            try:
-                OOP_all = np.load(
-                    f"{self.sg_tools.output_dir}/recovered_OOP.npy"
-                )
-                OOP_vec_all = np.load(
-                    f"{self.sg_tools.output_dir}/recovered_OOP_vec.npy"
-                )
-            except FileNotFoundError:
-                OOP_all, OOP_vec_all = self.sg_tools.analysis.compute_OOP(
-                    save_data=False
-                )
+        def F_eigenval_animation(self):
+            """Visualize the eigenvalues of F and plot timeseries next to the
+            movie.
+            """
+            raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
+            F_all = self.sg_tools._load_recovered_info("f")
+            J_all = self.sg_tools._load_recovered_info("J")
+            OOP_all = self.sg_tools._load_recovered_info("OOP")
+            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vec")
 
             num_frames = len(J_all)
             frames = np.arange(num_frames)
-            raw_imgs = np.load(f"{self.sg_tools.input_dir}/raw-frames.npy")[
-                :, :, :, 0
-            ]
 
             R_all = np.zeros((num_frames, 2, 2))
             U_all = np.zeros((num_frames, 2, 2))
@@ -415,16 +457,16 @@ class SarcGraphTools:
 
             img_list = []
             Path("tmp").mkdir(parents=True, exist_ok=True)
-            radius = 0.2 * np.min(raw_imgs.shape[1:])
+            radius = 0.2 * np.min(raw_frames.shape[1:])
             th = np.linspace(0, 2.0 * np.pi, 100)
             v = np.array([radius * np.cos(th), radius * np.sin(th)]).T
-            center = np.array(raw_imgs.shape[1:]).reshape(1, 2) / 2
+            center = np.array(raw_frames.shape[1:]).reshape(1, 2) / 2
             vec_circ = v + center
             p1_1 = center - radius * vec_1
             p1_2 = center + radius * vec_1
             p2_1 = center - radius * vec_2
             p2_2 = center + radius * vec_2
-            for frame_num, raw_img in enumerate(raw_imgs):
+            for frame_num, raw_img in enumerate(raw_frames):
                 plt.figure(figsize=(10, 5))
                 plt.subplot(1, 2, 1)
                 plt.imshow(raw_img, cmap=plt.cm.gray)
@@ -515,14 +557,14 @@ class SarcGraphTools:
                 plt.tight_layout()
                 plt.savefig(
                     f"tmp/frame-{frame_num}.png",
-                    dpi=quality,
+                    dpi=self.sg_tools.quality,
                     bbox_inches="tight",
                 )
                 plt.close()
                 img_list.append(imageio.imread(f"tmp/frame-{frame_num}.png"))
             shutil.rmtree("tmp")
 
-            if save_data:
+            if self.sg_tools.save_results:
                 with open(
                     f"{self.sg_tools.output_dir}/recovered_lambda.npy", "wb"
                 ) as file:
@@ -532,74 +574,65 @@ class SarcGraphTools:
                     f"{self.sg_tools.output_dir}/F_anim.gif", img_list
                 )
 
-        def timeseries_params(
-            self, quality=100, include_eps=False, save_data=True
-        ):
-            try:
-                data = pd.read_pickle(
-                    f"./{self.sg_tools.output_dir}/timeseries_params.pkl"
-                )
-            except FileNotFoundError:
-                data = self.sg_tools.analysis.compute_ts_params(
-                    save_data=False
-                )
+        def timeseries_params(self):
+            """Visualize time series parameters."""
+            ts_params = self.sg_tools._load_ts_params()
 
             plt.figure(figsize=(7, 7))
 
-            med = np.median(data["mean_contract_time"])
+            med = np.median(ts_params["mean_contract_time"])
             plt.subplot(2, 2, 1)
-            plt.hist(data["mean_contract_time"])
+            plt.hist(ts_params["mean_contract_time"])
             plt.plot([med, med], [0, 10], "r--")
             plt.xlabel("frames")
             plt.title(f"median_contract: {med:.2f}")
             plt.tight_layout()
 
-            med = np.median(data["mean_relax_time"])
+            med = np.median(ts_params["mean_relax_time"])
             plt.subplot(2, 2, 2)
-            plt.hist(data["mean_relax_time"])
+            plt.hist(ts_params["mean_relax_time"])
             plt.plot([med, med], [0, 10], "r--")
             plt.xlabel("frames")
             plt.title(f"median_relax: {med:.2f}")
             plt.tight_layout()
 
-            med = np.median(data["mean_flat_time"])
+            med = np.median(ts_params["mean_flat_time"])
             plt.subplot(2, 2, 3)
-            plt.hist(data["mean_flat_time"])
+            plt.hist(ts_params["mean_flat_time"])
             plt.plot([med, med], [0, 10], "r--")
             plt.xlabel("frames")
             plt.title(f"median_flat: {med:.2f}")
             plt.tight_layout()
 
-            med = np.median(data["mean_period_len"])
+            med = np.median(ts_params["mean_period_len"])
             plt.subplot(2, 2, 4)
-            plt.hist(data["mean_period_len"])
+            plt.hist(ts_params["mean_period_len"])
             plt.plot([med, med], [0, 10], "r--")
             plt.xlabel("frames")
             plt.title(f"median_period: {med:.2f}")
             plt.tight_layout()
 
+            out_file = f"{self.sg_tools.output_dir}/histogram_time_constants"
             plt.savefig(
-                f"./{self.sg_tools.output_dir}/histogram_time_constants",
-                dpi=quality,
+                f"{out_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"./{self.sg_tools.output_dir}//histogram_time_constants.eps"
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{out_file}.eps")
 
-        def dendrogram(self, dist_func="dtw"):
-            """Cluster timeseries and plot a dendrogram that shows the clustering."""
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.time_series.sarc_info_gpr(
-                    save_data=False
-                )
-            sarcs_length = self.sg_tools.time_series.normalize(sarcs_data[2])
-            num_sarcs = len(sarcs_length)
+        def dendrogram(self, dist_func: str = "dtw"):
+            """Cluster timeseries and plot a dendrogram that shows clusters.
+
+            Parameters
+            ----------
+            dist_func : str, optional, by default "dtw"
+            """
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
+
+            num_frames = sarcomeres.frame.max() + 1
+            num_sarcs = sarcomeres.sarc_id.max() + 1
+            length = sarcomeres.length_norm.to_numpy().reshape(-1, num_frames)
 
             if dist_func == "dtw":
                 dtw_dist = self.sg_tools.time_series.dtw_distance
@@ -607,13 +640,13 @@ class SarcGraphTools:
                 for sarc_1_id in range(num_sarcs):
                     for sarc_2_id in range(sarc_1_id + 1, num_sarcs):
                         dist = dtw_dist(
-                            sarcs_length[sarc_1_id, :],
-                            sarcs_length[sarc_2_id, :],
+                            length[sarc_1_id, :],
+                            length[sarc_2_id, :],
                         )
                         dist_mat[sarc_1_id, sarc_2_id] = dist
                         dist_mat[sarc_2_id, sarc_1_id] = dist
             if dist_func == "euclidean":
-                dist_mat = squareform(pdist(sarcs_length, "euclidean"))
+                dist_mat = squareform(pdist(length, "euclidean"))
 
             dist_v = squareform(dist_mat)
             Z = linkage(dist_v, method="ward", metric="euclidean")
@@ -642,15 +675,16 @@ class SarcGraphTools:
                     kk / len(ordered),
                     1 - kk / len(ordered),
                 )
-                plt.plot(sarcs_length[ix, :] + kk * 0.3, c=col)
+                plt.plot(length[ix, :] + kk * 0.3, c=col)
 
             plt.tight_layout()
             plt.ylim((-0.4, kk * 0.3 + 0.35))
             plt.axis("off")
 
-            plt.savefig(f"{self.sg_tools.output_dir}/dendrogram_DTW.pdf")
+            output_file = f"{self.sg_tools.output_dir}/dendrogram_{dist_func}"
+            plt.savefig(f"{output_file}.pdf")
 
-        def spatial_graph(self, quality=100, include_eps=False):
+        def spatial_graph(self):
             G = nx.read_gpickle(
                 f"{self.sg_tools.output_dir}/spatial-graph.pkl"
             )
@@ -745,21 +779,26 @@ class SarcGraphTools:
                 else:
                     plt.plot(pos[0], pos[1], ".", color=color, ms=5)
 
+            output_file = f"./{self.sg_tools.output_dir}/spatial-graph"
             plt.savefig(
-                f"./{self.sg_tools.output_dir}/spatial-graph.png",
-                dpi=quality,
+                f"./{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(f"./{self.sg_tools.output_dir}/spatial-graph.eps")
+            if self.sg_tools.include_eps:
+                plt.savefig(f"./{output_file}.png")
 
         def tracked_vs_untracked(
-            self,
-            start_frame=0,
-            stop_frame=np.inf,
-            quality=100,
-            include_eps=False,
+            self, start_frame: int = 0, stop_frame: int = np.inf
         ):
+            """Visualize metrics to compare detecting and tracking sarcomeres
+            in a video with process each individual frame seperately.
+
+            Parameters
+            ----------
+            start_frame : int, optional, by default 0
+            stop_frame : int, optional, by default np.inf
+            """
             # process the whole video and detect and track sarcomeres
             sarcs_info = np.load(
                 f"{self.sg_tools.output_dir}/sarcomeres-info.npy"
@@ -771,7 +810,8 @@ class SarcGraphTools:
 
             sarcs_info = sarcs_info[:, :, start_frame:stop_frame]
 
-            # process the video frame by frame and detect sarcomeres without tracking
+            # process the video frame by frame and detect sarcomeres without
+            # tracking
             sg_video = SarcGraph("test-output", "video")
             segmented_zdiscs = sg_video.zdisc_segmentation(
                 "samples/sample_0.avi"
@@ -1260,3 +1300,65 @@ untracked, {num_tracked} tracked"
                 )
 
             return df
+
+    def _load_raw_frames(self):
+        try:
+            raw_frames = np.load(f"{self.input_dir}/raw-frames.npy")
+        except Exception:
+            self._raise_sarcgraph_data_not_found("raw-frames.npy")
+        return raw_frames
+
+    def _load_contours(self):
+        try:
+            contours = np.load(
+                f"{self.input_dir}/contours.npy",
+                allow_pickle=True,
+            )
+        except Exception:
+            self._raise_sarcgraph_data_not_found("contours.npy")
+        return contours
+
+    def _load_sarcomeres(self):
+        try:
+            sarcomeres = pd.read_csv(
+                f"{self.input_dir}/sarcomeres.csv", index_col=[0]
+            )
+        except Exception:
+            self._raise_sarcgraph_data_not_found("sarcomeres.csv")
+        return sarcomeres
+
+    def _load_sarcomeres_gpr(self):
+        try:
+            sarcomeres = pd.read_csv(
+                f"{self.input_dir}/sarcomeres-gpr.csv",
+                index_col=[0],
+            )
+        except Exception:
+            self._raise_data_not_found("sarcomeres-gpr.csv")
+        return sarcomeres
+
+    def _load_recovered_info(self, info_type: str):
+        try:
+            OOP = np.load(f"{self.input_dir}/recovered-{info_type}.npy")
+        except Exception:
+            self._raise_data_not_found(f"recovered-{info_type}.npy")
+        return OOP
+
+    def _load_ts_params(self):
+        try:
+            ts_params = pd.read_pickle(f"{self.input_dir}/ts_params.pkl")
+        except FileNotFoundError:
+            self._raise_data_not_found("ts_params.pkl")
+        return ts_params
+
+    def _raise_sarcgraph_data_not_found(self, data_file: str):
+        raise FileNotFoundError(
+            f"{data_file} was not found in {self.input_dir}/. Run "
+            "SarcGraph().sarcomeres_detection(save_output=True) first."
+        )
+
+    def _raise_data_not_found(self, data_file: str):
+        raise FileNotFoundError(
+            f"{data_file} was not found in {self.input_dir}/. Run "
+            "SarcGraphTools().time_series.run_all() first."
+        )
