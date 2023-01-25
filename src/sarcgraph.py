@@ -399,8 +399,6 @@ class SarcGraph:
         self,
         tracked_zdiscs: pd.DataFrame,
         full_track_ratio: float = 0.75,
-        optics_eps: float = 1,
-        optics_min_samples: int = 2,
     ) -> pd.DataFrame:
         """A post processing step to group related partially tracked zdiscs
         using the OPTICS algorithm. Increases the robustness of zdisc tracking
@@ -415,10 +413,6 @@ class SarcGraph:
             this ratio, it is considered a fully tracked zdisc. The default
             value 0.75 means if a zdisc is tracked in more than 75 percent of
             all frames it is fully tracked.
-        optics_eps : float, optional
-            check the link to OPTICS, by default 1
-        optics_min_samples : int, optional
-            check the link to OPTICS, by default 2
 
         Returns
         -------
@@ -429,7 +423,7 @@ class SarcGraph:
         For a detailed description of the OPTICS algorithm check:
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
         """
-        num_frames = len(tracked_zdiscs.frame.unique())
+        num_frames = tracked_zdiscs.frame.max() + 1
         tracked_zdiscs_grouped = tracked_zdiscs.groupby("particle")["particle"]
         tracked_zdiscs["freq"] = tracked_zdiscs_grouped.transform("count")
         fully_tracked_zdiscs = tracked_zdiscs.loc[
@@ -449,18 +443,27 @@ class SarcGraph:
         )
 
         # merge related clusters (neighbors)
+        all_clusters_xy = (
+            tracked_zdiscs.groupby("particle").mean()[["x", "y"]].to_numpy()
+        )
+        clusters_min_dist = np.min(
+            distance_matrix(all_clusters_xy, all_clusters_xy)
+            + 1e6 * np.eye(len(all_clusters_xy)),
+            axis=1,
+        )
+        optics_max_eps = np.mean(clusters_min_dist)
         data = np.array(partially_tracked_clusters)
-        optics_model = OPTICS(eps=optics_eps, min_samples=optics_min_samples)
+        optics_model = OPTICS(max_eps=optics_max_eps, min_samples=2)
         optics_result = optics_model.fit_predict(data)
         optics_clusters = np.unique(optics_result)
 
         all_merged_zdiscs = []
         for i, optics_cluster in enumerate(optics_clusters):
+            index = np.where(optics_result == optics_cluster)[0]
+            particles_in_cluster = partially_tracked_clusters.iloc[
+                index
+            ].index.to_numpy()
             if optics_cluster >= 0:
-                index = np.where(optics_result == optics_cluster)[0]
-                particles_in_cluster = partially_tracked_clusters.iloc[
-                    index
-                ].index.to_numpy()
                 merged_zdiscs = (
                     partially_tracked_zdiscs.loc[
                         partially_tracked_zdiscs["particle"].isin(
@@ -474,6 +477,13 @@ class SarcGraph:
                     merged_zdiscs.particle = -(i + 1)
                     merged_zdiscs.freq = len(merged_zdiscs)
                     all_merged_zdiscs.append(merged_zdiscs.reset_index())
+            else:
+                for p in particles_in_cluster:
+                    no_merge_zdiscs = partially_tracked_zdiscs.loc[
+                        partially_tracked_zdiscs["particle"] == p
+                    ]
+                    if len(no_merge_zdiscs) > num_frames * full_track_ratio:
+                        all_merged_zdiscs.append(no_merge_zdiscs)
         if all_merged_zdiscs:
             all_merged_zdiscs = pd.concat(all_merged_zdiscs)
             return pd.concat((fully_tracked_zdiscs, all_merged_zdiscs))
@@ -490,8 +500,6 @@ class SarcGraph:
         tp_depth: float = 4.0,
         full_track_ratio: float = 0.75,
         skip_merging: bool = False,
-        optics_eps: float = 1,
-        optics_min_samples: int = 2,
         save_output: bool = True,
     ) -> pd.DataFrame:
         """Track detected Z-Discs in a video. The input could be the address to
@@ -520,10 +528,6 @@ class SarcGraph:
         skip_merging : bool, optional
             skipping the merging step will result in fewer fully tracked
             zdiscs, by default False
-        optics_eps : float, optional
-            check the link to OPTICS, by default 1
-        optics_min_samples : int, optional
-            check the link to OPTICS, by default 2
         save_output : bool
             by default True
 
@@ -583,8 +587,6 @@ class SarcGraph:
                 tracked_zdiscs = self._merge_tracked_zdiscs(
                     tracked_zdiscs,
                     full_track_ratio,
-                    optics_eps,
-                    optics_min_samples,
                 )
 
         if save_output:
@@ -801,8 +803,6 @@ class SarcGraph:
         tp_depth: float = 4.0,
         full_track_ratio: float = 0.75,
         skip_merging: bool = False,
-        optics_eps: float = 1,
-        optics_min_samples: int = 2,
         c_avg_length: float = 1,
         c_angle: float = 1,
         c_diff_length: float = 1,
@@ -841,10 +841,6 @@ class SarcGraph:
         skip_merging : bool, optional
             skipping the merging step will result in fewer fully tracked
             zdiscs, by default False
-        optics_eps : float, optional
-            check the link to OPTICS, by default 1
-        optics_min_samples : int, optional
-            check the link to OPTICS, by default 2
         c_avg_length : float, optional
             comparison of the length of a connection with ``l_avg`` affects the
             connection score, ``c_avg_length`` sets the relative effect of this
@@ -905,8 +901,6 @@ class SarcGraph:
                 tp_depth,
                 full_track_ratio,
                 skip_merging,
-                optics_eps,
-                optics_min_samples,
                 save_output,
             )
 
