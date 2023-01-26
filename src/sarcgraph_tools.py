@@ -690,17 +690,14 @@ class SarcGraphTools:
             output_file = f"{self.sg_tools.output_dir}/dendrogram_{dist_func}"
             plt.savefig(f"{output_file}.pdf")
 
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
         def spatial_graph(self):
+            """Visualizes the spatial graph
+
+            See Also
+            --------
+            SarcGraphTools.analysis.create_spatial_graph(): creates and saves
+            the spatial graph of zdiscs and sarcomres
+            """
             G = nx.read_gpickle(
                 f"{self.sg_tools.output_dir}/spatial-graph.pkl"
             )
@@ -803,17 +800,6 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"./{output_file}.png")
-
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
 
         def tracked_vs_untracked(
             self, start_frame: int = 0, stop_frame: int = np.inf
@@ -1387,6 +1373,85 @@ class SarcGraphTools:
                 )
 
             return df
+
+        def create_spatial_graph(
+            self,
+            file_path: str = None,
+            raw_frames: np.ndarray = None,
+            segmented_zdiscs: pd.DataFrame = None,
+        ):
+            """Generates and saves a spatial graph of tracked zdiscs where
+            edges indicate sarcomeres and edge weights indicates the ratio of
+            the frames in which that sarcomere is detected
+
+            Parameters
+            ----------
+            file_path : str
+                The address of an image or a video file to be loaded
+            raw_frames  : np.ndarray, shape=(frames, dim_1, dim_2, channels)
+                Raw input image or video given as a 4 dimensional array
+            segmented_zdiscs : pd.DataFrame
+                Information of all detected zdiscs in every frame.
+            """
+            sg_video = SarcGraph(file_type="video")
+
+            # load tracked zdiscs:
+            tracked_zdiscs = sg_video.zdisc_tracking(
+                file_path, raw_frames, segmented_zdiscs, save_output=False
+            )
+
+            # initiate the graph:
+            G = nx.Graph()
+
+            pos = {}
+            for particle in tracked_zdiscs.particle.unique():
+                x_pos = tracked_zdiscs[tracked_zdiscs.particle == particle][
+                    "x"
+                ].mean()
+                y_pos = tracked_zdiscs[tracked_zdiscs.particle == particle][
+                    "y"
+                ].mean()
+                G.add_node(particle, x_pos=x_pos, y_pos=y_pos)
+                pos.update({particle: (y_pos, -x_pos)})
+
+            # SarcGraph object that work with single frames
+            sg_image = SarcGraph(file_type="image")
+
+            # frame by frame sarcomere detection, add graph edges and weigts:
+            for frame in tracked_zdiscs.frame.unique():
+                tracked_zdiscs_frame = tracked_zdiscs[
+                    tracked_zdiscs.frame == frame
+                ]
+                tracked_zdiscs_frame.loc[:]["frame"] = 0
+                _, myofibrils = sg_image.sarcomere_detection(
+                    tracked_zdiscs=tracked_zdiscs_frame, save_output=False
+                )
+                for myo in myofibrils:
+                    for edge in myo.edges:
+                        disc_1 = myo.nodes[edge[0]]["particle_id"]
+                        disc_2 = myo.nodes[edge[1]]["particle_id"]
+                        if G.has_edge(disc_1, disc_2):
+                            G[disc_1][disc_2]["weight"] += 1
+                        else:
+                            G.add_edge(disc_1, disc_2, weight=1)
+
+            # graph pruning based on minimum weight threshold
+            num_frames = tracked_zdiscs.frame.max() + 1
+            weight_cutoff = np.floor(0.1 * num_frames)
+            edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
+            for edge in edges:
+                if G[edge[0]][edge[1]]["weight"] < weight_cutoff:
+                    G.remove_edge(edge[0], edge[1])
+
+            # isolated nodes removal
+            isolated_nodes = list(nx.isolates(G))
+            G.remove_nodes_from(isolated_nodes)
+
+            # save the graph
+            output_file = f"{self.sg_tools.output_dir}/spatial-graph"
+            nx.write_gpickle(G, path=f"{output_file}.pkl")
+            with open(f"{output_file}-pos.pkl", "wb") as file:
+                pickle.dump(pos, file)
 
     ###########################################################
     #                    Utility Functions                    #
