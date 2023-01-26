@@ -580,9 +580,7 @@ class SarcGraph:
             t = tp.link_df(
                 segmented_zdiscs, search_range=tp_depth, memory=num_frames
             )
-            tracked_zdiscs = tp.filter_stubs(
-                t, int(num_frames * 0.10)
-            ).reset_index(drop=True)
+            tracked_zdiscs = tp.filter_stubs(t, 3).reset_index(drop=True)
             if skip_merging is False:
                 tracked_zdiscs = self._merge_tracked_zdiscs(
                     tracked_zdiscs,
@@ -917,6 +915,8 @@ class SarcGraph:
         myofibrils = [G.subgraph(c).copy() for c in nx.connected_components(G)]
 
         sarcs = []
+        num_frames = tracked_zdiscs.frame.max() + 1
+        z0 = pd.DataFrame(np.arange(0, num_frames, 1), columns=["frame"])
         for i, edge in enumerate(G.edges):
             p1 = int(G.nodes[edge[0]]["particle_id"])
             p2 = int(G.nodes[edge[1]]["particle_id"])
@@ -925,10 +925,8 @@ class SarcGraph:
             z1.columns = np.insert(z2.columns.values[1:] + "_p1", 0, "frame")
             z2.columns = np.insert(z2.columns.values[1:] + "_p2", 0, "frame")
 
-            num_frames = tracked_zdiscs.frame.max() + 1
-            z0 = pd.DataFrame(np.arange(0, num_frames, 1), columns=["frame"])
             sarc = pd.merge(z0, z1, how="outer", on="frame")
-            sarc = pd.merge(z1, z2, how="outer", on="frame")
+            sarc = pd.merge(sarc, z2, how="outer", on="frame")
 
             sarc["sarc_id"] = i
             sarc["zdiscs"] = ",".join(

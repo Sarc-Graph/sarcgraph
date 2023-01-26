@@ -16,7 +16,7 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 from pathlib import Path
-from typing import List, Union, Tuple
+from typing import Tuple  # List, Union
 
 from src.sarcgraph import SarcGraph
 
@@ -41,6 +41,9 @@ class SarcGraphTools:
         self.time_series = self.TimeSeries(self)
         self.analysis = self.Analysis(self)
 
+    ###########################################################
+    #                    Time Series Class                    #
+    ###########################################################
     class TimeSeries:
         def __init__(self, sg_tools):
             self.sg_tools = sg_tools
@@ -173,10 +176,13 @@ class SarcGraphTools:
             sarcomeres = self._sarcomeres_length_normalize(sarcomeres)
             if self.sg_tools.save_results:
                 sarcomeres.to_csv(
-                    f"./{self.sg_tools.output_dir}/sarcomeres-gpr.csv"
+                    f"./{self.sg_tools.output_dir}/sarcomeres_gpr.csv"
                 )
             return sarcomeres
 
+    #############################################################
+    #                    Visualization Class                    #
+    #############################################################
     class Visualization:
         def __init__(self, sg_tools):
             self.sg_tools = sg_tools
@@ -580,9 +586,9 @@ class SarcGraphTools:
 
             plt.figure(figsize=(7, 7))
 
-            med = np.median(ts_params["mean_contract_time"])
+            med = np.median(ts_params["mean_contraction_time"])
             plt.subplot(2, 2, 1)
-            plt.hist(ts_params["mean_contract_time"])
+            plt.hist(ts_params["mean_contraction_time"])
             plt.plot([med, med], [0, 10], "r--")
             plt.xlabel("frames")
             plt.title(f"median_contract: {med:.2f}")
@@ -684,6 +690,16 @@ class SarcGraphTools:
             output_file = f"{self.sg_tools.output_dir}/dendrogram_{dist_func}"
             plt.savefig(f"{output_file}.pdf")
 
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
         def spatial_graph(self):
             G = nx.read_gpickle(
                 f"{self.sg_tools.output_dir}/spatial-graph.pkl"
@@ -788,11 +804,23 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"./{output_file}.png")
 
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+
         def tracked_vs_untracked(
             self, start_frame: int = 0, stop_frame: int = np.inf
         ):
-            """Visualize metrics to compare detecting and tracking sarcomeres
-            in a video with process each individual frame seperately.
+            """Visualize metrics to compare the effect of tracking sarcomeres
+            in a video vs only detecting sarcomeres in each frame without
+            tracking
 
             Parameters
             ----------
@@ -800,19 +828,20 @@ class SarcGraphTools:
             stop_frame : int, optional, by default np.inf
             """
             # process the whole video and detect and track sarcomeres
-            sarcs_info = np.load(
-                f"{self.sg_tools.output_dir}/sarcomeres-info.npy"
-            )
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
 
-            stop_frame = min(stop_frame, sarcs_info.shape[-1])
+            total_frames = sarcomeres.frame.max() + 1
+            stop_frame = min(stop_frame, total_frames)
             start_frame = min(start_frame, stop_frame - 1)
             num_frames = stop_frame - start_frame
 
-            sarcs_info = sarcs_info[:, :, start_frame:stop_frame]
+            sarcomeres = sarcomeres[
+                sarcomeres.frame.between(start_frame, stop_frame)
+            ]
+            num_tracked = sarcomeres.sarc_id.max() + 1
 
-            # process the video frame by frame and detect sarcomeres without
-            # tracking
-            sg_video = SarcGraph("test-output", "video")
+            # process the video frame by frame - no tracking
+            sg_video = SarcGraph(self.sg_tools.input_dir)
             segmented_zdiscs = sg_video.zdisc_segmentation(
                 "samples/sample_0.avi"
             )
@@ -822,115 +851,118 @@ class SarcGraphTools:
             angle_all_frames = []
             median_length_all_frames = []
             sarc_num_all_frames = []
-            sg_image = SarcGraph("test-output", "image")
+            sg_image = SarcGraph(self.sg_tools.input_dir, "image")
             for frame in range(start_frame, stop_frame):
                 segmented_zdiscs_frame = segmented_zdiscs.loc[
                     segmented_zdiscs.frame == frame
                 ].copy()
-                segmented_zdiscs_frame.loc[:, "frame"] = 0.0
+                segmented_zdiscs_frame.loc[:, "frame"] = 0
                 tracked_zdiscs_frame = sg_image.zdisc_tracking(
-                    zdiscs_info=segmented_zdiscs_frame
+                    segmented_zdiscs=segmented_zdiscs_frame
                 )
-                _, sarc_info = sg_image.sarcomere_detection(
+                sarcomeres_frame, _ = sg_image.sarcomere_detection(
                     tracked_zdiscs=tracked_zdiscs_frame
                 )
-                length_all_frames.append(sarc_info[2, :, 0])
-                width_all_frames.append(sarc_info[3, :, 0])
-                angle_all_frames.append(sarc_info[4, :, 0])
+                length_all_frames.append(sarcomeres_frame.length.to_numpy())
+                width_all_frames.append(sarcomeres_frame.width.to_numpy())
+                angle_all_frames.append(sarcomeres_frame.angle.to_numpy())
                 median_length_all_frames.append(
                     np.median(length_all_frames[-1])
                 )
-                sarc_num_all_frames.append(sarc_info.shape[1])
+                sarc_num_all_frames.append(sarcomeres_frame.sarc_id.max() + 1)
 
             # compute average number of not tracked sarcomeres in each frame
-            num_tracked = sarcs_info.shape[1]
             num_not_tracked = np.mean(sarc_num_all_frames)
 
             len_diff_mean = []
+            sarcs_length_grouped = sarcomeres.groupby("frame").length
             for untracked_len, tracked_len in zip(
-                length_all_frames, sarcs_info[2].T
+                length_all_frames, sarcs_length_grouped
             ):
-                tracked_len_mean = np.nanmean(tracked_len)
-                tracked_num = len(tracked_len) - np.sum(np.isnan(tracked_len))
+                tracked_len = tracked_len[1].to_numpy()
+                tracked_len_mean = np.mean(tracked_len)
                 len_diff_mean.append(
                     self.sg_tools.analysis._sampler(
                         untracked_len,
                         tracked_len_mean,
-                        tracked_num,
+                        num_tracked,
                         num_run=1000,
                     )
                 )
 
             plt.figure(figsize=(np.clip(int(num_frames * 0.3), 10, 25), 5))
-            plt.boxplot(len_diff_mean)
-            plt.plot([0, num_frames], [-0.5, -0.5], "k--")
-            plt.plot([0, num_frames], [0.5, 0.5], "k--")
+            plt.boxplot(
+                len_diff_mean, positions=range(start_frame, stop_frame)
+            )
+            plt.plot([start_frame, stop_frame - 1], [-0.5, -0.5], "k--")
+            plt.plot([start_frame, stop_frame - 1], [0.5, 0.5], "k--")
             plt.title(
-                f"Comparison of length in pixels, approx {num_not_tracked:.2f}\
-untracked, {num_tracked} tracked"
+                f"Comparison of length in pixels, approx {num_not_tracked:.2f}"
+                f" untracked, {num_tracked} tracked"
             )
             plt.xlabel("frame number")
             plt.ylabel(r"$\mu_{track}-\mu_{all}$")
+            output_file = f"{self.sg_tools.output_dir}/length-comparison"
             plt.savefig(
-                f"./{self.sg_tools.output_dir}/length-comparison.png",
-                dpi=quality,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"./{self.sg_tools.output_dir}/length-comparison.eps"
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps")
 
             wid_diff_mean = []
+            sarcs_width_grouped = sarcomeres.groupby("frame").width
             for untracked_wid, tracked_wid in zip(
-                width_all_frames, sarcs_info[3].T
+                width_all_frames, sarcs_width_grouped
             ):
-                tracked_wid_mean = np.nanmean(tracked_wid)
-                tracked_num = len(tracked_wid) - np.sum(np.isnan(tracked_wid))
+                tracked_wid = tracked_wid[1].to_numpy()
+                tracked_wid_mean = np.mean(tracked_wid)
                 wid_diff_mean.append(
                     self.sg_tools.analysis._sampler(
                         untracked_wid,
                         tracked_wid_mean,
-                        tracked_num,
+                        num_tracked,
                         num_run=1000,
                     )
                 )
 
             plt.figure(figsize=(np.clip(int(num_frames * 0.3), 10, 25), 5))
-            plt.boxplot(wid_diff_mean)
-            plt.plot([0, num_frames], [-0.5, -0.5], "k--")
-            plt.plot([0, num_frames], [0.5, 0.5], "k--")
+            plt.boxplot(
+                wid_diff_mean, positions=range(start_frame, stop_frame)
+            )
+            plt.plot([start_frame, stop_frame - 1], [-0.5, -0.5], "k--")
+            plt.plot([start_frame, stop_frame - 1], [0.5, 0.5], "k--")
             plt.title(
-                f"Comparison of Width in pixels, approx {num_not_tracked:.2f}\
-untracked, {num_tracked} tracked"
+                f"Comparison of Width in pixels, approx {num_not_tracked:.2f} "
+                f"untracked, {num_tracked} tracked"
             )
             plt.xlabel("frame number")
             plt.ylabel(r"$\mu_{track}-\mu_{all}$")
+            output_file = f"{self.sg_tools.output_dir}/width-comparison"
             plt.savefig(
-                f"./{self.sg_tools.output_dir}/width-comparison.png",
-                dpi=quality,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"./{self.sg_tools.output_dir}/width-comparison.eps"
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps")
 
             ang_diff_mean = []
             rad_diff_mean = []
+            sarcs_angle_grouped = sarcomeres.groupby("frame").angle
             for untracked_ang, tracked_ang in zip(
-                angle_all_frames, sarcs_info[4].T
+                angle_all_frames, sarcs_angle_grouped
             ):
-                (
-                    tracked_ang_mean,
-                    tracked_rad_mean,
-                ) = self.sg_tools.analysis._angular_mean(tracked_ang)
-                tracked_num = len(tracked_ang) - np.sum(np.isnan(tracked_ang))
+                tracked_ang = tracked_ang[1].to_numpy()
+                out = self.sg_tools.analysis._angular_mean(tracked_ang)
+                tracked_ang_mean = out[0]
+                tracked_rad_mean = out[1]
                 ang_diff, rad_diff = self.sg_tools.analysis._angular_sampler(
                     untracked_ang,
                     tracked_ang_mean,
                     tracked_rad_mean,
-                    tracked_num,
+                    num_tracked,
                     num_run=1000,
                 )
                 ang_diff_mean.append(ang_diff)
@@ -938,50 +970,90 @@ untracked, {num_tracked} tracked"
 
             plt.figure(figsize=(np.clip(int(num_frames * 0.3), 10, 25), 10))
             plt.subplot(2, 1, 1)
-            plt.boxplot(ang_diff_mean)
-            plt.plot([0, num_frames], [-np.pi / 8, -np.pi / 8], "k--")
-            plt.plot([0, num_frames], [np.pi / 8, np.pi / 8], "k--")
+            plt.boxplot(
+                ang_diff_mean, positions=range(start_frame, stop_frame)
+            )
+            plt.plot(
+                [start_frame, stop_frame - 1], [-np.pi / 8, -np.pi / 8], "k--"
+            )
+            plt.plot(
+                [start_frame, stop_frame - 1], [np.pi / 8, np.pi / 8], "k--"
+            )
             plt.title(
-                f"Comparison of angle in radians, approx {num_not_tracked:.2f}\
-untracked, {num_tracked} tracked"
+                f"Comparison of angle in radians, approx {num_not_tracked:.2f}"
+                f" untracked, {num_tracked} tracked"
             )
             plt.xlabel("frame number")
             plt.ylabel(r"$\mu_{track}-\mu_{all}$")
             plt.subplot(2, 1, 2)
-            plt.boxplot(rad_diff_mean)
-            plt.plot([0, num_frames], [0, 0], "r--", label="uniform")
-            plt.plot([0, num_frames], [1, 1], "k--", label="oriented")
+            plt.boxplot(
+                rad_diff_mean, positions=range(start_frame, stop_frame)
+            )
+            plt.plot(
+                [start_frame, stop_frame - 1], [0, 0], "r--", label="uniform"
+            )
+            plt.plot(
+                [start_frame, stop_frame - 1], [1, 1], "k--", label="oriented"
+            )
             plt.title(
-                f"Comparison of angle radius in pixels, approx {num_not_tracked:.2f}\
-untracked, {num_tracked} tracked"
+                "Comparison of angle radius in pixels, approx "
+                f"{num_not_tracked:.2f} untracked, {num_tracked} tracked"
             )
             plt.xlabel("frame number")
             plt.ylabel(r"$\mu_{track}-\mu_{all}$")
             plt.legend()
+            output_file = f"{self.sg_tools.output_dir}/angle-comparison"
             plt.savefig(
-                f"./{self.sg_tools.output_dir}/angle-comparison.png",
-                dpi=quality,
+                f"{output_file}.png",
+                dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
-            if include_eps:
-                plt.savefig(
-                    f"./{self.sg_tools.output_dir}/angle-comparison.eps"
-                )
+            if self.sg_tools.include_eps:
+                plt.savefig(f"{output_file}.eps")
 
+    ##########################################################
+    #                     Analysis Class                     #
+    ##########################################################
     class Analysis:
         def __init__(self, sg_tools):
             self.sg_tools = sg_tools
 
-        def _sampler(self, data, mu, tracked_num, num_run=1000):
+        def _sampler(
+            self,
+            signal: np.ndarray,
+            mu: float,
+            tracked_num: int,
+            num_run: int = 1000,
+        ) -> np.ndarray:
+            """Random sampler
+
+            Parameters
+            ----------
+            signal : np.ndarray
+            mu : float
+            tracked_num : int
+            num_run : int, optional
+            """
             samples = np.zeros(num_run)
             for run in range(num_run):
-                ids = np.random.randint(0, len(data), size=(tracked_num))
-                samples[run] = mu - np.mean(data[ids])
+                ids = np.random.randint(0, len(signal), size=(tracked_num))
+                samples[run] = mu - np.mean(signal[ids])
             return samples
 
-        def _angular_mean(self, data):
-            x_mean = np.nanmean(np.cos(data))
-            y_mean = np.nanmean(np.sin(data))
+        def _angular_mean(self, signal: np.ndarray) -> Tuple[float, float]:
+            """Angular signal averaging
+
+            Parameters
+            ----------
+            signal : np.ndarray
+
+            Returns
+            -------
+            Tuple[float, float]
+                angle and radius of averaged signal
+            """
+            x_mean = np.nanmean(np.cos(signal))
+            y_mean = np.nanmean(np.sin(signal))
 
             mean_angle = np.arctan2(y_mean, x_mean)
             mean_rad = np.linalg.norm([x_mean, y_mean], 2)
@@ -989,47 +1061,77 @@ untracked, {num_tracked} tracked"
             return mean_angle, mean_rad
 
         def _angular_sampler(
-            self, data, mu_ang, mu_rad, tracked_num, num_run=1000
-        ):
+            self,
+            signal: np.ndarray,
+            mu_ang: float,
+            mu_rad: float,
+            tracked_num: int,
+            num_run: int = 1000,
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            """Angular random sampler
+
+            Parameters
+            ----------
+            signal : np.ndarray
+            mu_ang : float
+            mu_rad : float
+            tracked_num : int
+            num_run : int, by default 1000, optional
+
+            Returns
+            -------
+            Tuple[np.ndarray, np.ndarray]
+            """
             ang_samples = np.zeros(num_run)
             rad_samples = np.zeros(num_run)
             for run in range(num_run):
-                ids = np.random.randint(0, len(data), size=(tracked_num))
+                ids = np.random.randint(0, len(signal), size=(tracked_num))
                 ang_mean, rad_mean = self.sg_tools.analysis._angular_mean(
-                    data[ids]
+                    signal[ids]
                 )
                 ang_samples[run] = mu_ang - ang_mean
                 rad_samples[run] = mu_rad - rad_mean
 
             return ang_samples, rad_samples
 
-        def compute_F(self, adjust_reference=False, save_data=True):
-            """Compute the average deformation gradient for the whole movie."""
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.timeseries.sarc_info_gpr(
-                    save_data=False
-                )
+        def compute_F_J(
+            self, adjust_reference: bool = False
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            """Compute the average deformation gradient (F) and its jacobian
+            (J) for the whole movie.
 
-            sarcs_data = np.load(
-                f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-            )
-            sarcs_x = sarcs_data[0]
-            sarcs_y = sarcs_data[1]
+            Parameters
+            ----------
+            adjust_reference : bool, by default False
+                The refrence frame by default is the first frame of the movie,
+                if this variable is set to ``True`` the function will run twice
+                and the refrence frame on the second run will be the most
+                contracted frame
+
+            Returns
+            -------
+            Tuple(np.ndarray, np.ndarray)
+                The average deformation gradient (F), shape=(num_frames, 2, 2)
+                The jacobian of F, shape=(num_frames)
+            """
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
+
+            sarcs_x = sarcomeres.x.to_numpy()
+            sarcs_y = sarcomeres.y.to_numpy()
 
             # compute Lambda from x_pos and y_pos
-            num_sarcs, num_frames = sarcs_x.shape
-            num_vecs = int((num_sarcs * num_sarcs - num_sarcs) / 2.0)
+            num_frames = sarcomeres.frame.max() + 1
+            num_sarcs = sarcomeres.sarc_id.max() + 1
+            n = int(num_sarcs * (num_sarcs - 1) / 2)
 
             Lambda_list = []
             for frame_num in range(num_frames):
-                x_vec = sarcs_x[:, frame_num]
-                y_vec = sarcs_y[:, frame_num]
+                ids = sarcomeres.frame == frame_num
+                x_vec = sarcs_x[ids]
+                y_vec = sarcs_y[ids]
 
-                Lambda = np.zeros((2, num_vecs))
+                print(frame_num)
+                Lambda = np.zeros((2, n))
                 x_vec_tile = np.tile(x_vec, (num_sarcs, 1))
                 v_x = x_vec_tile.T - x_vec_tile
                 y_vec_tile = np.tile(y_vec, (num_sarcs, 1))
@@ -1055,42 +1157,42 @@ untracked, {num_tracked} tracked"
                     F_all[target_frame] = F
                     J_all[target_frame] = np.linalg.det(F)
 
-            if save_data:
+            if self.sg_tools.save_results:
                 np.save(f"{self.sg_tools.output_dir}/recovered_F.npy", F_all)
                 np.save(f"{self.sg_tools.output_dir}/recovered_J.npy", J_all)
 
             return F_all, J_all
 
-        def compute_OOP(self, save_data=True):
-            # compute_OOP_all
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.timeseries.sarc_info_gpr(
-                    save_data=False
-                )
+        def compute_OOP(self) -> Tuple[np.ndarray, np.ndarray]:
+            """Computes Orientation Order Parameter (OOP) for the whole movie.
 
-            num_frames = sarcs_data.shape[-1]
-            ang = sarcs_data[4]
-            n = np.array(
-                [
-                    [np.cos(ang) ** 2, np.cos(ang) * np.sin(ang)],
-                    [np.cos(ang) * np.sin(ang), np.sin(ang) ** 2],
-                ]
-            )
-            t = 2 * n - np.array([[1, 0], [0, 1]]).reshape(2, 2, 1, 1)
-            t = np.mean(t, axis=2)
+            Returns
+            -------
+            Tuple[np.ndarray, np.ndarray]
+                OOP for all frames, shape=(num_frames)
+                OOP vector for all frames, shape=(num_frames, 2)
+            """
 
+            def f(data):
+                rxx = np.cos(data) ** 2
+                rxy = np.cos(data) * np.sin(data)
+                ryy = np.sin(data) ** 2
+                n = np.array([[rxx, rxy], [rxy, ryy]])
+                t = 2 * n - np.eye(2).reshape(2, 2, 1)
+                return np.mean(t, axis=2)
+
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
+            num_frames = sarcomeres.frame.max() + 1
+
+            T = sarcomeres.groupby("frame")["angle"].apply(lambda x: f(x))
             OOP_all = np.zeros(num_frames)
             OOP_vec_all = np.zeros((num_frames, 2))
             for frame in range(num_frames):
-                u, v = np.linalg.eig(t[:, :, frame])
+                u, v = np.linalg.eig(T[frame])
                 OOP_all[frame] = np.max(u)
                 OOP_vec_all[frame, :] = v[:, np.argmax(u)]
 
-            if save_data:
+            if self.sg_tools.save_results:
                 np.save(
                     f"{self.sg_tools.output_dir}/recovered_OOP.npy", OOP_all
                 )
@@ -1101,61 +1203,53 @@ untracked, {num_tracked} tracked"
 
             return OOP_all, OOP_vec_all
 
-        def compue_metrics(self, save_data=True):
-            try:
-                F_all = np.load(f"{self.sg_tools.output_dir}/recovered_F.npy")
-                J_all = np.load(f"{self.sg_tools.output_dir}/recovered_J.npy")
-            except FileNotFoundError:
-                F_all, J_all = self.sg_tools.analysis.compute_F(
-                    save_data=False
-                )
+        def compute_metrics(self, frame: int = None) -> dict:
+            """This function computes the following metrics as defind in the
+            paper: {OOP, C_iso, C_OOP, s_til, s_avg}.
 
-            try:
-                OOP_all = np.load(
-                    f"{self.sg_tools.output_dir}/recovered_OOP.npy"
-                )
-                OOP_vec_all = np.load(
-                    f"{self.sg_tools.output_dir}/recovered_OOP_vec.npy"
-                )
-            except FileNotFoundError:
-                OOP_all, OOP_vec_all = self.sg_tools.analysis.compute_OOP(
-                    save_data=False
-                )
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.timeseries.sarc_info_gpr(
-                    save_data=False
-                )
+            Parameters
+            ----------
+            frame : int, optional
+                By default is set to the frame with maximum contraction
 
-            max_contract_frame = np.argmin(J_all)
-            OOP = OOP_all[max_contract_frame]
-            OOP_vec = OOP_vec_all[max_contract_frame]
-            F = F_all[max_contract_frame]
-            J = J_all[max_contract_frame]
+            Notes
+            -----
+            See the paper for more information:
+            https://arxiv.org/abs/2102.02412
 
-            avg_contract = 1 - np.sqrt(J)
+            Returns
+            -------
+            dict
+            """
+
+            def f(data):
+                return (np.max(data) - np.min(data)) / (np.max(data) + 1)
+
+            F_all = self.sg_tools._load_recovered_info("F")
+            J_all = self.sg_tools._load_recovered_info("J")
+            OOP_all = self.sg_tools._load_recovered_info("OOP")
+            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
+
+            if frame is None:
+                frame = np.argmin(J_all)
+            OOP = OOP_all[frame]
+            OOP_vec = OOP_vec_all[frame]
+            F = F_all[frame]
+            J = J_all[frame]
 
             v = OOP_vec
             v_abs = np.linalg.norm(v, 2)
             v0 = np.dot(np.linalg.inv(F), v)
             v0_abs = np.linalg.norm(v0, 2)
+            avg_contract = 1 - np.sqrt(J)
             avg_aligned_contract = (v0_abs - v_abs) / v0_abs
 
-            sarcs_length_norm = self.sg_tools.time_series.normalize(
-                sarcs_data[2]
-            )
+            sarcs_groupby_sarc_id = sarcomeres.groupby("sarc_id").length_norm
+            sarcs_groupby_frame = sarcomeres.groupby("frame").length_norm
 
-            y_max = np.max(sarcs_length_norm, axis=1)
-            y_min = np.min(sarcs_length_norm, axis=1)
-
-            s = (y_max - y_min) / (y_max + 1)
-            s_til = np.median(s)
-
-            y_avg = np.mean(sarcs_length_norm, axis=0)
-            s_avg = (np.max(y_avg) - np.min(y_avg)) / (np.max(y_avg) + 1)
+            s_til = sarcs_groupby_sarc_id.apply(lambda x: f(x)).median()
+            s_avg = f(sarcs_groupby_frame.mean())
 
             info_dict = {
                 "OOP": OOP,
@@ -1165,7 +1259,7 @@ untracked, {num_tracked} tracked"
                 "s_avg": s_avg,
             }
 
-            if save_data:
+            if self.sg_tools.save_results:
                 with open(
                     f"{self.sg_tools.output_dir}/recovered_metrics.json", "w"
                 ) as file:
@@ -1173,29 +1267,20 @@ untracked, {num_tracked} tracked"
 
             return info_dict
 
-        def compute_ts_params(self, save_data=True):
-            """Compute and save timeseries time constants (contraction time, relaxation\
-                time, flat time, period, offset, etc.)."""
-            try:
-                sarcs_data = np.load(
-                    f"{self.sg_tools.output_dir}/sarcomeres-info-gpr.npy"
-                )
-            except FileNotFoundError:
-                sarcs_data = self.sg_tools.time_series.sarc_info_gpr(
-                    save_data=False
-                )
+        def compute_ts_params(self):
+            """Compute and save timeseries time constants (contraction time,
+            relaxation time, flat time, period, offset, etc.)."""
+            sarcomeres = self.sg_tools._load_sarcomeres_gpr()
+            num_sarcs = sarcomeres.sarc_id.max() + 1
+            num_frames = sarcomeres.frame.max() + 1
 
-            sarcs_length = sarcs_data[2]
-            sarcs_length_norm = self.sg_tools.time_series.normalize(
-                sarcs_data[2]
-            )
+            sarcs_length = sarcomeres.groupby("sarc_id").length
+            sarcs_length_norm = sarcomeres.groupby("sarc_id").length_norm
 
             signal_th = 0
             signal_dist = 10
             signal_width = 5
 
-            num_sarcs = sarcs_length.shape[0]
-            num_frames = sarcs_length.shape[1]
             frames = np.arange(0, num_frames, 1)
             sarc_ids = np.arange(0, num_sarcs, 1)
             pix_length_median = np.zeros(num_sarcs)
@@ -1209,9 +1294,11 @@ untracked, {num_tracked} tracked"
             mean_period_len = np.zeros(num_sarcs)
             frames_to_first_peak = np.zeros(num_sarcs)
             peaks_count = np.zeros(num_sarcs)
-            for sarc_id, (sarc_length, sarc_length_norm) in enumerate(
-                zip(sarcs_length, sarcs_length_norm)
-            ):
+            for length, length_norm in zip(sarcs_length, sarcs_length_norm):
+                sarc_id = length[0]
+                sarc_length = length[1].to_numpy()
+                sarc_length_norm = length_norm[1].to_numpy()
+
                 sarc_length_med = signal.medfilt(sarc_length_norm, 5)
                 sarc_length_deriv = np.gradient(sarc_length_norm, frames)
 
@@ -1294,13 +1381,16 @@ untracked, {num_tracked} tracked"
 
             df = pd.DataFrame(data.T, columns=cols)
 
-            if save_data:
-                df.to_pickle(
-                    f"./{self.sg_tools.output_dir}/timeseries_params.pkl"
+            if self.sg_tools.save_results:
+                df.to_csv(
+                    f"./{self.sg_tools.output_dir}/timeseries_params.csv"
                 )
 
             return df
 
+    ###########################################################
+    #                    Utility Functions                    #
+    ###########################################################
     def _load_raw_frames(self):
         try:
             raw_frames = np.load(f"{self.input_dir}/raw-frames.npy")
@@ -1330,25 +1420,28 @@ untracked, {num_tracked} tracked"
     def _load_sarcomeres_gpr(self):
         try:
             sarcomeres = pd.read_csv(
-                f"{self.input_dir}/sarcomeres-gpr.csv",
+                f"{self.input_dir}/sarcomeres_gpr.csv",
                 index_col=[0],
             )
         except Exception:
-            self._raise_data_not_found("sarcomeres-gpr.csv")
+            self._raise_data_not_found("sarcomeres_gpr.csv")
         return sarcomeres
 
     def _load_recovered_info(self, info_type: str):
         try:
-            OOP = np.load(f"{self.input_dir}/recovered-{info_type}.npy")
+            OOP = np.load(f"{self.input_dir}/recovered_{info_type}.npy")
         except Exception:
-            self._raise_data_not_found(f"recovered-{info_type}.npy")
+            self._raise_data_not_found(f"recovered_{info_type}.npy")
         return OOP
 
     def _load_ts_params(self):
         try:
-            ts_params = pd.read_pickle(f"{self.input_dir}/ts_params.pkl")
+            ts_params = pd.read_csv(
+                f"{self.input_dir}/timeseries_params.csv",
+                index_col=[0],
+            )
         except FileNotFoundError:
-            self._raise_data_not_found("ts_params.pkl")
+            self._raise_data_not_found("timeseries_params.csv")
         return ts_params
 
     def _raise_sarcgraph_data_not_found(self, data_file: str):
