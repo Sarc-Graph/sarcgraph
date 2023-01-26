@@ -40,6 +40,7 @@ class SarcGraph:
             )
         if not isinstance(output_dir, str):
             raise TypeError("output_dir must be a string.")
+        Path(f"{output_dir}").mkdir(parents=True, exist_ok=True)
         self.output_dir = output_dir
         self.file_type = file_type
 
@@ -104,7 +105,6 @@ class SarcGraph:
         """
         if not isinstance(file_name, str):
             raise TypeError("file_name must be a string.")
-        Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
         if isinstance(data, np.ndarray) or isinstance(data, List):
             np.save(
                 f"./{self.output_dir}/{file_name}.npy", data, allow_pickle=True
@@ -123,7 +123,6 @@ class SarcGraph:
         """
         if not isinstance(file_name, str):
             raise TypeError("file_name must be a string.")
-        Path(f"./{self.output_dir}").mkdir(parents=True, exist_ok=True)
         if isinstance(data, pd.DataFrame):
             data.to_csv(f"./{self.output_dir}/{file_name}.csv")
             return
