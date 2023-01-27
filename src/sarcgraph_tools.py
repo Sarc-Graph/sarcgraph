@@ -1461,11 +1461,11 @@ class SarcGraphTools:
         raw_frames: np.ndarray = None,
         segmented_zdiscs: pd.DataFrame = None,
     ):
-        self.sg_tools.analysis.compute_F_J()
-        self.sg_tools.analysis.compute_OOP()
-        self.sg_tools.analysis.compute_metrics()
-        self.sg_tools.analysis.compute_ts_params()
-        self.sg_tools.analysis.create_spatial_graph(
+        self.analysis.compute_F_J()
+        self.analysis.compute_OOP()
+        self.analysis.compute_metrics()
+        self.analysis.compute_ts_params()
+        self.analysis.create_spatial_graph(
             file_path, raw_frames, segmented_zdiscs
         )
 
