@@ -278,7 +278,7 @@ class SarcGraphTools:
                 f"GIF saved as '{self.sg_tools.output_dir}/contract_anim.gif'!"
             )
 
-        def plot_normalized_sarcs_length(self):
+        def normalized_sarcs_length(self):
             """Plot normalized length of all detected sarcomeres vs frame
             number.
             """
@@ -327,7 +327,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_OOP(self):
+        def OOP(self):
             """Plot recovered Orientational Order Parameter."""
             OOP = self.sg_tools._load_recovered_info("OOP")
 
@@ -347,7 +347,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_F(self):
+        def F(self):
             """Plot recovered deformation gradient."""
             F = self.sg_tools._load_recovered_info("F")
 
@@ -369,7 +369,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_J(self):
+        def J(self):
             """Plot recovered deformation jacobian."""
             J = self.sg_tools._load_recovered_info("J")
             frames = np.arange(len(J))
@@ -439,7 +439,7 @@ class SarcGraphTools:
             F_all = self.sg_tools._load_recovered_info("f")
             J_all = self.sg_tools._load_recovered_info("J")
             OOP_all = self.sg_tools._load_recovered_info("OOP")
-            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vec")
+            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
 
             num_frames = len(J_all)
             frames = np.arange(num_frames)
@@ -466,7 +466,7 @@ class SarcGraphTools:
             radius = 0.2 * np.min(raw_frames.shape[1:])
             th = np.linspace(0, 2.0 * np.pi, 100)
             v = np.array([radius * np.cos(th), radius * np.sin(th)]).T
-            center = np.array(raw_frames.shape[1:]).reshape(1, 2) / 2
+            center = np.array(raw_frames.shape[1:]).reshape(-1) / 2
             vec_circ = v + center
             p1_1 = center - radius * vec_1
             p1_2 = center + radius * vec_1
@@ -512,7 +512,6 @@ class SarcGraphTools:
 
                 OOP_vec = OOP_vec_all[frame_num]
                 OOP_rad = radius * OOP_all[frame_num]
-
                 plt.plot(
                     [
                         center[1] - OOP_vec[1] * OOP_rad,
@@ -641,7 +640,7 @@ class SarcGraphTools:
             length = sarcomeres.length_norm.to_numpy().reshape(-1, num_frames)
 
             if dist_func == "dtw":
-                dtw_dist = self.sg_tools.time_series.dtw_distance
+                dtw_dist = self.sg_tools.time_series._dtw_distance
                 dist_mat = np.zeros((num_sarcs, num_sarcs))
                 for sarc_1_id in range(num_sarcs):
                     for sarc_2_id in range(sarc_1_id + 1, num_sarcs):
@@ -690,17 +689,14 @@ class SarcGraphTools:
             output_file = f"{self.sg_tools.output_dir}/dendrogram_{dist_func}"
             plt.savefig(f"{output_file}.pdf")
 
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
         def spatial_graph(self):
+            """Visualizes the spatial graph
+
+            See Also
+            --------
+            SarcGraphTools.analysis.create_spatial_graph(): creates and saves
+            the spatial graph of zdiscs and sarcomres
+            """
             G = nx.read_gpickle(
                 f"{self.sg_tools.output_dir}/spatial-graph.pkl"
             )
@@ -803,17 +799,6 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"./{output_file}.png")
-
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
 
         def tracked_vs_untracked(
             self, start_frame: int = 0, stop_frame: int = np.inf
@@ -1388,9 +1373,102 @@ class SarcGraphTools:
 
             return df
 
+        def create_spatial_graph(
+            self,
+            file_path: str = None,
+            raw_frames: np.ndarray = None,
+            segmented_zdiscs: pd.DataFrame = None,
+        ):
+            """Generates and saves a spatial graph of tracked zdiscs where
+            edges indicate sarcomeres and edge weights indicates the ratio of
+            the frames in which that sarcomere is detected
+
+            Parameters
+            ----------
+            file_path : str
+                The address of an image or a video file to be loaded
+            raw_frames  : np.ndarray, shape=(frames, dim_1, dim_2, channels)
+                Raw input image or video given as a 4 dimensional array
+            segmented_zdiscs : pd.DataFrame
+                Information of all detected zdiscs in every frame.
+            """
+            sg_video = SarcGraph(file_type="video")
+
+            # load tracked zdiscs:
+            tracked_zdiscs = sg_video.zdisc_tracking(
+                file_path, raw_frames, segmented_zdiscs, save_output=False
+            )
+
+            # initiate the graph:
+            G = nx.Graph()
+
+            pos = {}
+            for particle in tracked_zdiscs.particle.unique():
+                x_pos = tracked_zdiscs[tracked_zdiscs.particle == particle][
+                    "x"
+                ].mean()
+                y_pos = tracked_zdiscs[tracked_zdiscs.particle == particle][
+                    "y"
+                ].mean()
+                G.add_node(particle, x_pos=x_pos, y_pos=y_pos)
+                pos.update({particle: (y_pos, -x_pos)})
+
+            # SarcGraph object that work with single frames
+            sg_image = SarcGraph(file_type="image")
+
+            # frame by frame sarcomere detection, add graph edges and weigts:
+            for frame in tracked_zdiscs.frame.unique():
+                tracked_zdiscs_frame = tracked_zdiscs[
+                    tracked_zdiscs.frame == frame
+                ]
+                tracked_zdiscs_frame.loc[:]["frame"] = 0
+                _, myofibrils = sg_image.sarcomere_detection(
+                    tracked_zdiscs=tracked_zdiscs_frame, save_output=False
+                )
+                for myo in myofibrils:
+                    for edge in myo.edges:
+                        disc_1 = myo.nodes[edge[0]]["particle_id"]
+                        disc_2 = myo.nodes[edge[1]]["particle_id"]
+                        if G.has_edge(disc_1, disc_2):
+                            G[disc_1][disc_2]["weight"] += 1
+                        else:
+                            G.add_edge(disc_1, disc_2, weight=1)
+
+            # graph pruning based on minimum weight threshold
+            num_frames = tracked_zdiscs.frame.max() + 1
+            weight_cutoff = np.floor(0.1 * num_frames)
+            edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
+            for edge in edges:
+                if G[edge[0]][edge[1]]["weight"] < weight_cutoff:
+                    G.remove_edge(edge[0], edge[1])
+
+            # isolated nodes removal
+            isolated_nodes = list(nx.isolates(G))
+            G.remove_nodes_from(isolated_nodes)
+
+            # save the graph
+            output_file = f"{self.sg_tools.output_dir}/spatial-graph"
+            nx.write_gpickle(G, path=f"{output_file}.pkl")
+            with open(f"{output_file}-pos.pkl", "wb") as file:
+                pickle.dump(pos, file)
+
     ###########################################################
     #                    Utility Functions                    #
     ###########################################################
+    def run_all(
+        self,
+        file_path: str = None,
+        raw_frames: np.ndarray = None,
+        segmented_zdiscs: pd.DataFrame = None,
+    ):
+        self.sg_tools.analysis.compute_F_J()
+        self.sg_tools.analysis.compute_OOP()
+        self.sg_tools.analysis.compute_metrics()
+        self.sg_tools.analysis.compute_ts_params()
+        self.sg_tools.analysis.create_spatial_graph(
+            file_path, raw_frames, segmented_zdiscs
+        )
+
     def _load_raw_frames(self):
         try:
             raw_frames = np.load(f"{self.input_dir}/raw-frames.npy")
@@ -1453,5 +1531,5 @@ class SarcGraphTools:
     def _raise_data_not_found(self, data_file: str):
         raise FileNotFoundError(
             f"{data_file} was not found in {self.input_dir}/. Run "
-            "SarcGraphTools().time_series.run_all() first."
+            "SarcGraphTools().run_all() first."
         )
