@@ -278,7 +278,7 @@ class SarcGraphTools:
                 f"GIF saved as '{self.sg_tools.output_dir}/contract_anim.gif'!"
             )
 
-        def plot_normalized_sarcs_length(self):
+        def normalized_sarcs_length(self):
             """Plot normalized length of all detected sarcomeres vs frame
             number.
             """
@@ -327,7 +327,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_OOP(self):
+        def OOP(self):
             """Plot recovered Orientational Order Parameter."""
             OOP = self.sg_tools._load_recovered_info("OOP")
 
@@ -347,7 +347,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_F(self):
+        def F(self):
             """Plot recovered deformation gradient."""
             F = self.sg_tools._load_recovered_info("F")
 
@@ -369,7 +369,7 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def plot_J(self):
+        def J(self):
             """Plot recovered deformation jacobian."""
             J = self.sg_tools._load_recovered_info("J")
             frames = np.arange(len(J))
@@ -439,7 +439,7 @@ class SarcGraphTools:
             F_all = self.sg_tools._load_recovered_info("f")
             J_all = self.sg_tools._load_recovered_info("J")
             OOP_all = self.sg_tools._load_recovered_info("OOP")
-            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vec")
+            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
 
             num_frames = len(J_all)
             frames = np.arange(num_frames)
@@ -466,7 +466,7 @@ class SarcGraphTools:
             radius = 0.2 * np.min(raw_frames.shape[1:])
             th = np.linspace(0, 2.0 * np.pi, 100)
             v = np.array([radius * np.cos(th), radius * np.sin(th)]).T
-            center = np.array(raw_frames.shape[1:]).reshape(1, 2) / 2
+            center = np.array(raw_frames.shape[1:]).reshape(-1) / 2
             vec_circ = v + center
             p1_1 = center - radius * vec_1
             p1_2 = center + radius * vec_1
@@ -512,7 +512,6 @@ class SarcGraphTools:
 
                 OOP_vec = OOP_vec_all[frame_num]
                 OOP_rad = radius * OOP_all[frame_num]
-
                 plt.plot(
                     [
                         center[1] - OOP_vec[1] * OOP_rad,
@@ -641,7 +640,7 @@ class SarcGraphTools:
             length = sarcomeres.length_norm.to_numpy().reshape(-1, num_frames)
 
             if dist_func == "dtw":
-                dtw_dist = self.sg_tools.time_series.dtw_distance
+                dtw_dist = self.sg_tools.time_series._dtw_distance
                 dist_mat = np.zeros((num_sarcs, num_sarcs))
                 for sarc_1_id in range(num_sarcs):
                     for sarc_2_id in range(sarc_1_id + 1, num_sarcs):
@@ -1456,6 +1455,20 @@ class SarcGraphTools:
     ###########################################################
     #                    Utility Functions                    #
     ###########################################################
+    def run_all(
+        self,
+        file_path: str = None,
+        raw_frames: np.ndarray = None,
+        segmented_zdiscs: pd.DataFrame = None,
+    ):
+        self.sg_tools.analysis.compute_F_J()
+        self.sg_tools.analysis.compute_OOP()
+        self.sg_tools.analysis.compute_metrics()
+        self.sg_tools.analysis.compute_ts_params()
+        self.sg_tools.analysis.create_spatial_graph(
+            file_path, raw_frames, segmented_zdiscs
+        )
+
     def _load_raw_frames(self):
         try:
             raw_frames = np.load(f"{self.input_dir}/raw-frames.npy")
@@ -1518,5 +1531,5 @@ class SarcGraphTools:
     def _raise_data_not_found(self, data_file: str):
         raise FileNotFoundError(
             f"{data_file} was not found in {self.input_dir}/. Run "
-            "SarcGraphTools().time_series.run_all() first."
+            "SarcGraphTools().run_all() first."
         )
