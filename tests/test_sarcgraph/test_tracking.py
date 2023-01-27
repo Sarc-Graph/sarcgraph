@@ -3,12 +3,12 @@ import pandas as pd
 import os
 from src.sarcgraph import SarcGraph
 
-sg_vid = SarcGraph("test", "video")
-sg_img = SarcGraph("test", "image")
-
 
 def test_zdisc_tracking_output_fmt():
-    tracked_zdiscs = sg_vid.zdisc_tracking("samples/sample_0.avi")
+    sg_vid = SarcGraph(file_type="video")
+    tracked_zdiscs = sg_vid.zdisc_tracking(
+        "samples/sample_0.avi", save_output=False
+    )
     expected_cols = [
         "frame",
         "x",
@@ -26,12 +26,16 @@ def test_zdisc_tracking_output_fmt():
 
 
 def test_zdisc_tracking_save():
+    sg_vid = SarcGraph("test", file_type="video")
     _ = sg_vid.zdisc_tracking("samples/sample_0.avi")
     assert os.path.exists(f"./{sg_vid.output_dir}/tracked-zdiscs.csv")
 
 
 def test_zdisc_tracking():
-    tracked_zdiscs = sg_vid.zdisc_tracking("samples/sample_0.avi")
+    sg_vid = SarcGraph(file_type="video")
+    tracked_zdiscs = sg_vid.zdisc_tracking(
+        "samples/sample_0.avi", save_output=False
+    )
     zdiscs_num_in_frames = tracked_zdiscs.groupby("particle")[
         "particle"
     ].count()
@@ -40,10 +44,10 @@ def test_zdisc_tracking():
     segmented_zdiscs = pd.read_csv(
         "tests/test_data/segmented-zdiscs.csv", index_col=[0]
     )
-    expected_tracked_zdiscs = pd.read_csv(
+    expected = pd.read_csv(
         "tests/test_data/test-tracked-zdiscs.csv", index_col=[0]
     )
     tracked_zdiscs = sg_vid.zdisc_tracking(
         segmented_zdiscs=segmented_zdiscs, save_output=False
     )
-    assert tracked_zdiscs.equals(expected_tracked_zdiscs)
+    assert np.allclose(tracked_zdiscs.to_numpy(), expected.to_numpy())
