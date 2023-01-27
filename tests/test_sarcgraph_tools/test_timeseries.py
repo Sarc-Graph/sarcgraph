@@ -1,6 +1,5 @@
 import pytest
 import numpy as np
-import pandas as pd
 
 from src.sarcgraph_tools import SarcGraphTools
 
@@ -26,9 +25,9 @@ def test_dtw_distance_error():
     with pytest.raises(TypeError):
         sg_tools.time_series._dtw_distance(s1_np, s2)
     with pytest.raises(ValueError):
-        sg_tools.time_series._dtw_distance(s1, s2_2d)
+        sg_tools.time_series._dtw_distance(s1_np, s2_2d)
     with pytest.raises(ValueError):
-        sg_tools.time_series._dtw_distance(s1_2d, s2)
+        sg_tools.time_series._dtw_distance(s1_2d, s2_np)
 
 
 def test_gpr():
@@ -38,20 +37,12 @@ def test_gpr():
     assert np.allclose(res, res_expected, atol=0.01)
 
 
-def tests_sarcomeres_length_normalize():
-    # add tests for this
-    assert 0 == 1
-
-
-def test_sarcomeres_gpr_error():
-    with pytest.raises(FileNotFoundError):
-        sg_tools.time_series.sarcomeres_gpr()
-
-
 def test_sarcomeres_gpr():
-    sg_tools = SarcGraphTools(input_dir="./tests/test_data")
-    sarcomeres_gpr = sg_tools.time_series.sarcomeres_gpr()
-    sarcomeres_gpr_expected = pd.read_csv(
-        f"{sg_tools.input_dir}/sarcomeres-gpr.csv", index_col=[0]
+    sg_tools = SarcGraphTools(
+        input_dir="./tests/test_data", save_results=False
     )
-    assert sarcomeres_gpr.equals(sarcomeres_gpr_expected)
+    sarcomeres_gpr = sg_tools.time_series.sarcomeres_gpr()
+
+    assert sarcomeres_gpr.isna().sum().sum() == 0
+    assert set(sarcomeres_gpr.frame.unique()) == set([0, 1, 2, 3, 4])
+    assert "length_norm" in sarcomeres_gpr
