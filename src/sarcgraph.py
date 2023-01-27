@@ -579,7 +579,7 @@ class SarcGraph:
             t = tp.link_df(
                 segmented_zdiscs, search_range=tp_depth, memory=num_frames
             )
-            tracked_zdiscs = tp.filter_stubs(t, 3).reset_index(drop=True)
+            tracked_zdiscs = tp.filter_stubs(t, 2).reset_index(drop=True)
             if skip_merging is False:
                 tracked_zdiscs = self._merge_tracked_zdiscs(
                     tracked_zdiscs,
