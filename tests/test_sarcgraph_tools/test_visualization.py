@@ -7,7 +7,7 @@ from src.sarcgraph import SarcGraph
 from src.sarcgraph_tools import SarcGraphTools
 
 sg = SarcGraph()
-sg_tools = SarcGraphTools()
+sg_tools = SarcGraphTools(quality=50)
 
 
 def test_zdiscs_and_sarcs():

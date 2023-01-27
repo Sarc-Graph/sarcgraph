@@ -436,7 +436,7 @@ class SarcGraphTools:
             movie.
             """
             raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
-            F_all = self.sg_tools._load_recovered_info("f")
+            F_all = self.sg_tools._load_recovered_info("F")
             J_all = self.sg_tools._load_recovered_info("J")
             OOP_all = self.sg_tools._load_recovered_info("OOP")
             OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
