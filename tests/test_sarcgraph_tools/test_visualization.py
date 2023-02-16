@@ -3,8 +3,8 @@
 # import pandas as pd
 import os
 
-from src.sarcgraph import SarcGraph
-from src.sarcgraph_tools import SarcGraphTools
+from sarcgraph.sarcgraph import SarcGraph
+from sarcgraph.sarcgraph_tools import SarcGraphTools
 
 sg = SarcGraph()
 sg_tools = SarcGraphTools(quality=50)

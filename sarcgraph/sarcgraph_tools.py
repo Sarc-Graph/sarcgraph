@@ -18,7 +18,7 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from pathlib import Path
 from typing import Tuple  # List, Union
 
-from src.sarcgraph import SarcGraph
+from sarcgraph import SarcGraph
 
 
 class SarcGraphTools:
