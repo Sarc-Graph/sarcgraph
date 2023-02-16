@@ -96,7 +96,7 @@ class SarcGraphTools:
 
             Notes
             -----
-            For more information on GPR check the following:
+            For more information on GPR check:
             https://scikit-learn.org/stable/modules/gaussian_process.html
             """
             num_frames = len(s)
