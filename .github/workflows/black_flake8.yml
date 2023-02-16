@@ -1,10 +1,7 @@
 ---
 name: Black & flake8
 
-on:
-  push:
-    paths:
-      - "!src/**.py"
+on: [push]
 
 jobs:
   check_python:
