@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import os
 
-from src.sarcgraph_tools import SarcGraphTools
-from src.sarcgraph import SarcGraph
+from sarcgraph.sarcgraph_tools import SarcGraphTools
+from sarcgraph.sarcgraph import SarcGraph
 
 sg = SarcGraph()
 sg_tools = SarcGraphTools()

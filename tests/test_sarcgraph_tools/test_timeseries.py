@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from src.sarcgraph_tools import SarcGraphTools
+from sarcgraph.sarcgraph_tools import SarcGraphTools
 
 sg_tools = SarcGraphTools()
 

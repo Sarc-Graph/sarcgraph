@@ -1,5 +1,5 @@
 import numpy as np
-from src.sarcgraph import SarcGraph
+from sarcgraph.sarcgraph import SarcGraph
 
 sg_vid = SarcGraph("test", "video")
 sg_img = SarcGraph("test", "image")
