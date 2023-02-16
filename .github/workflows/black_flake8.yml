@@ -1,24 +1,19 @@
----
-name: Black & flake8
-
-on: [push]
+on:
+  push:
+    paths:
+      - '**.py'
 
 jobs:
-  check_python:
+  check-py-files:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Setup Python 3.8 env
-      uses: actions/setup-python@v1
-      with:
-        python-version: "3.8"
-    - name: Clone NLE repo
-      uses: actions/checkout@v2
-    - name: Ensure latest pip
-      run: "python -m pip install -q --upgrade pip"
-    - name: Install python linting deps
-      run: "pip install -q black flake8 flake8-bugbear"
-    - name: Run black
-      run: "black --check --diff ."
-    - name: Run flake8
-      run: "flake8"
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black
+      - name: Lint Python files with Flake8
+        run: flake8
+      - name: Format Python files with Black
+        run: black --check .
