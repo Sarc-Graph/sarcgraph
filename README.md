@@ -1,12 +1,8 @@
 # SarcGraph-2.0
 
-[![codecov](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/SarcGraph/Sarcgraph-2.0/check-py-files?label=check-py-files&logo=github&style=for-the-badge)](https://github.com/SarcGraph/Sarcgraph-2.0/actions/workflows/black_flake8.yml)
 
-<p align="center">
-<a href="https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml">
-  <img src="https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml/badge.svg?branch=main" />
-</a>
-</p>
+[![codecov](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0)
 
 ## Table of Contents
 * [Project Summary](#summary)
