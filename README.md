@@ -1,6 +1,6 @@
 # SarcGraph-2.0
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/SarcGraph/Sarcgraph-2.0/check-py-files?label=flake8&logo=github&style=for-the-badge)](https://github.com/SarcGraph/Sarcgraph-2.0/actions/workflows/black_flake8.yml)
+[![flake8](https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml)
 
 [![codecov](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0)
 
