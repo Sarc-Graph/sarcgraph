@@ -1,3 +1,4 @@
+name: black & flake8
 on:
   push:
     paths:
