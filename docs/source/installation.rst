@@ -1,3 +1,5 @@
+.. _installation_ref:
+
 **Installation Guide**
 ======================
 
@@ -13,6 +15,8 @@ SarcGraph needs the following packages to run:
 +===================+=========+
 | ffmpeg            | 4.2.2   |
 +-------------------+---------+
+| matplotlib        | 3.5.2   |
++-------------------+---------+
 | networkx          | 2.8.4   |
 +-------------------+---------+
 | numpy             | 1.23.5  |
@@ -23,9 +27,9 @@ SarcGraph needs the following packages to run:
 +-------------------+---------+
 | scikit-learn      | 1.2.0   |
 +-------------------+---------+
-| scikit-video      | 1.1.11  |
-+-------------------+---------+
 | scipy             | 1.10.0  |
++-------------------+---------+
+| sk-video          | 1.1.10  |
 +-------------------+---------+
 | trackpy           | 0.5.0   |
 +-------------------+---------+
@@ -37,7 +41,7 @@ We recommend using Anaconda to install prerequisites.
 
 **1. Install Anaconda**
 
-Follow `Anaconda Installation Documentation <https://docs.anaconda.com/anaconda/install/index.html>`_.
+Follow `Anaconda's installation instructions <https://docs.anaconda.com/anaconda/install/index.html>`_.
 
 **2. Create a new environment**
 
@@ -59,7 +63,7 @@ Run the following commands to install prerequisites:
 
 .. code-block:: bash
 
-    $ conda install -c conda-forge ffmpeg=4.2.2 networkx=2.8.4 numpy=1.23.5 pandas=1.5.2 scikit-image=0.19.3 scikit-learn=1.2.0 scikit-video=1.1.11 scipy=1.10.0 trackpy=0.5.0
+    $ conda install -c conda-forge ffmpeg=4.2.2 matplotlib=3.5.2 networkx=2.8.4 numpy=1.23.5 pandas=1.5.2 scikit-image=0.19.3 scikit-learn=1.2.0 scipy=1.10.0 scikit-video=1.1.10 trackpy=0.5.0
 
 **4. Install SarcGraph**
 

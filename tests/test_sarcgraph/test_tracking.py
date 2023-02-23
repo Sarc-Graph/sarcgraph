@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
-from sarcgraph.sarcgraph import SarcGraph
+from sarcgraph.sg import SarcGraph
 
 
 def test_zdisc_tracking_output_fmt():
