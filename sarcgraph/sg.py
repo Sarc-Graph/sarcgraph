@@ -88,7 +88,9 @@ class SarcGraph:
 
         return frames_gray
 
-    def _save_numpy(self, data: Union[List, np.ndarray], file_name: str) -> None:
+    def _save_numpy(
+        self, data: Union[List, np.ndarray], file_name: str
+    ) -> None:
         """Saves a numpy array.
 
         Parameters
@@ -99,7 +101,9 @@ class SarcGraph:
         if not isinstance(file_name, str):
             raise TypeError("file_name must be a string.")
         if isinstance(data, np.ndarray) or isinstance(data, List):
-            np.save(f"./{self.output_dir}/{file_name}.npy", data, allow_pickle=True)
+            np.save(
+                f"./{self.output_dir}/{file_name}.npy", data, allow_pickle=True
+            )
             return
 
         raise TypeError("data must be a numpy.ndarray or a List.")
@@ -121,7 +125,9 @@ class SarcGraph:
             f"'data' type is {type(data)}. 'data' must be a pandas DataFrame."
         )
 
-    def _filter_frames(self, frames: np.ndarray, sigma: float = 1.0) -> np.ndarray:
+    def _filter_frames(
+        self, frames: np.ndarray, sigma: float = 1.0
+    ) -> np.ndarray:
         """Convolves all frames with laplacian and gaussian filters.
 
         Parameters
@@ -182,13 +188,16 @@ class SarcGraph:
         if raw_frames is None:
             if file_path is None:
                 raise ValueError(
-                    "Either file_path or raw_frames should be given as" " input."
+                    "Either file_path or raw_frames should be given as"
+                    " input."
                 )
             else:
                 try:
                     raw_frames = self._data_loader(file_path)
                 except Exception:
-                    raise ValueError(f"Not able to load a file from {file_path}.")
+                    raise ValueError(
+                        f"Not able to load a file from {file_path}."
+                    )
 
         if not isinstance(raw_frames, np.ndarray):
             raise TypeError("raw_frames must be a numpy array.")
@@ -236,7 +245,9 @@ class SarcGraph:
                 measure.find_contours(frame, contour_thresh), dtype="object"
             )
             contours_size = list(length_checker(contours))
-            valid_contours.append(contours[np.greater_equal(contours_size, min_length)])
+            valid_contours.append(
+                contours[np.greater_equal(contours_size, min_length)]
+            )
         valid_contours = np.array(valid_contours, dtype="object")
         if save_output:
             self._save_numpy(valid_contours, file_name="contours")
@@ -283,10 +294,13 @@ class SarcGraph:
             end points positions).
         """
         if self.file_type == "video" and len(zdiscs_all) < 2:
-            raise ValueError("Only one frame detected. Video is not loaded correctly.")
+            raise ValueError(
+                "Only one frame detected. Video is not loaded correctly."
+            )
         if self.file_type == "image" and len(zdiscs_all) > 1:
             raise ValueError(
-                "More than one frame detected. The image is not loaded " "correctly."
+                "More than one frame detected. The image is not loaded "
+                "correctly."
             )
         data_frame = []
         for i, zdiscs_frame in enumerate(zdiscs_all):
@@ -294,7 +308,8 @@ class SarcGraph:
                 raise TypeError("Input should be a list of numpy arrays.")
             if zdiscs_frame.ndim != 2 or zdiscs_frame.shape[1] != 6:
                 raise ValueError(
-                    "Each numpy array must have the shape: (number of zdiscs, " "6)"
+                    "Each numpy array must have the shape: (number of zdiscs, "
+                    "6)"
                 )
             frame_id = i * np.ones((len(zdiscs_frame), 1), dtype=int)
             zdiscs_frame_extended = np.hstack((frame_id, zdiscs_frame))
@@ -352,8 +367,12 @@ class SarcGraph:
         searches for saved ``raw-frames.npy`` in the specified output directory
         , ``output_dir``.
         """
-        filtered_frames = self._process_input(file_path, raw_frames, sigma, save_output)
-        contours_all = self._detect_contours(filtered_frames, min_length, save_output)
+        filtered_frames = self._process_input(
+            file_path, raw_frames, sigma, save_output
+        )
+        contours_all = self._detect_contours(
+            filtered_frames, min_length, save_output
+        )
         zdiscs_all = []
         for contours_frame in contours_all:
             zdiscs_frame = np.zeros((len(contours_frame), 6))
@@ -362,7 +381,9 @@ class SarcGraph:
             zdiscs_all.append(zdiscs_frame)
         zdiscs_all_dataframe = self._zdiscs_to_pandas(zdiscs_all)
         if save_output:
-            self._save_dataframe(zdiscs_all_dataframe, file_name="segmented-zdiscs")
+            self._save_dataframe(
+                zdiscs_all_dataframe, file_name="segmented-zdiscs"
+            )
         return zdiscs_all_dataframe
 
     #########################################################
@@ -399,8 +420,12 @@ class SarcGraph:
         num_frames = tracked_zdiscs.frame.max() + 1
         tracked_zdiscs_grouped = tracked_zdiscs.groupby("particle")["particle"]
         tracked_zdiscs["freq"] = tracked_zdiscs_grouped.transform("count")
-        fully_tracked_zdiscs = tracked_zdiscs.loc[tracked_zdiscs.freq == num_frames]
-        partially_tracked_zdiscs = tracked_zdiscs.loc[tracked_zdiscs.freq < num_frames]
+        fully_tracked_zdiscs = tracked_zdiscs.loc[
+            tracked_zdiscs.freq == num_frames
+        ]
+        partially_tracked_zdiscs = tracked_zdiscs.loc[
+            tracked_zdiscs.freq < num_frames
+        ]
 
         if partially_tracked_zdiscs.empty:
             return fully_tracked_zdiscs
@@ -435,7 +460,9 @@ class SarcGraph:
             if optics_cluster >= 0:
                 merged_zdiscs = (
                     partially_tracked_zdiscs.loc[
-                        partially_tracked_zdiscs["particle"].isin(particles_in_cluster)
+                        partially_tracked_zdiscs["particle"].isin(
+                            particles_in_cluster
+                        )
                     ]
                     .groupby("frame")
                     .mean()
@@ -544,7 +571,9 @@ class SarcGraph:
         else:
             # run tracking with the trackpy package:
             num_frames = len(segmented_zdiscs.frame.unique())
-            t = tp.link_df(segmented_zdiscs, search_range=tp_depth, memory=num_frames)
+            t = tp.link_df(
+                segmented_zdiscs, search_range=tp_depth, memory=num_frames
+            )
             tracked_zdiscs = tp.filter_stubs(t, 2).reset_index(drop=True)
             if skip_merging is False:
                 tracked_zdiscs = self._merge_tracked_zdiscs(
@@ -585,7 +614,9 @@ class SarcGraph:
         nodes_particle_dict = {j: id for j, id in enumerate(zdiscs[:, -1])}
 
         nx.set_node_attributes(G, values=nodes_pos_dict, name="pos")
-        nx.set_node_attributes(G, values=nodes_particle_dict, name="particle_id")
+        nx.set_node_attributes(
+            G, values=nodes_particle_dict, name="particle_id"
+        )
 
         # find K nearest zdisc to each zdisc
         neigh = NearestNeighbors(n_neighbors=2)
@@ -652,14 +683,19 @@ class SarcGraph:
                         pass
                     else:
                         v2 = (
-                            G.nodes[neighbor]["pos"] - G.nodes[far_neighbor]["pos"]
+                            G.nodes[neighbor]["pos"]
+                            - G.nodes[far_neighbor]["pos"]
                         )  # vector connecting neighbor to far_neighbor
                         l2 = np.linalg.norm(v2)
 
-                        d_theta = np.arccos(np.dot(v1, v2) / (l1 * l2)) / (np.pi / 2)
+                        d_theta = np.arccos(np.dot(v1, v2) / (l1 * l2)) / (
+                            np.pi / 2
+                        )
                         d_l = np.abs(l2 - l1) / l1
 
-                        angle_score = np.power(1 - d_theta, 2) if d_theta >= 1 else 0
+                        angle_score = (
+                            np.power(1 - d_theta, 2) if d_theta >= 1 else 0
+                        )
                         diff_length_score = 1 / (1 + d_l)
 
                         score = np.max(
@@ -681,7 +717,9 @@ class SarcGraph:
                 edges_attr_dict[(node_2, node_1)],
             )
             edges_attr_dict_keep_max[(min(key), max(key))] = max_score
-        nx.set_edge_attributes(G, values=edges_attr_dict_keep_max, name="score")
+        nx.set_edge_attributes(
+            G, values=edges_attr_dict_keep_max, name="score"
+        )
         return G
 
     def _prune_graph(
@@ -730,7 +768,9 @@ class SarcGraph:
 
                     l1 = np.linalg.norm(best_vector)
                     l2 = np.linalg.norm(v)
-                    theta = np.arccos(np.dot(v, best_vector) / (l1 * l2)) / (np.pi / 2)
+                    theta = np.arccos(np.dot(v, best_vector) / (l1 * l2)) / (
+                        np.pi / 2
+                    )
 
                     if theta > angle_threshold and s > score_threshold:
                         G[node][n]["validity"] += 1
@@ -893,10 +933,12 @@ class SarcGraph:
             )
             sarc["length"] = length
             width1 = np.sqrt(
-                (sarc.p1_x_p1 - sarc.p2_x_p1) ** 2 + (sarc.p1_y_p1 - sarc.p2_y_p1) ** 2
+                (sarc.p1_x_p1 - sarc.p2_x_p1) ** 2
+                + (sarc.p1_y_p1 - sarc.p2_y_p1) ** 2
             )
             width2 = np.sqrt(
-                (sarc.p1_x_p2 - sarc.p2_x_p2) ** 2 + (sarc.p1_y_p2 - sarc.p2_y_p2) ** 2
+                (sarc.p1_x_p2 - sarc.p2_x_p2) ** 2
+                + (sarc.p1_y_p2 - sarc.p2_y_p2) ** 2
             )
             sarc["width"] = (width1 + width2) / 2
             angle = np.arctan2(sarc.y_p2 - sarc.y_p1, sarc.x_p2 - sarc.x_p1)
