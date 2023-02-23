@@ -1,5 +1,7 @@
 # SarcGraph-2.0
 
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Sarc-Graph/SarcGraph-2.0#license)
+
 [![flake8](https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/SarcGraph-2.0/actions/workflows/black_flake8.yml)
 
 [![codecov](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/SarcGraph-2.0)
@@ -17,31 +19,83 @@
 
 ## Project Summary <a name="summary"></a>
 
+**SarcGraph** is a tool for automatic detection, tracking and analysis of
+zdiscs and sarcomeres in movies of beating *human induced pluripotent stem
+cell-derived cardiomyocytes (hiPSC-CMs)*.
+
+**SarcGraph** was initially introduced in [Sarc-Graph: Automated segmentation, tracking, and analysis of sarcomeres in hiPSC-derived cardiomyocytes](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009443).
+This package is created to make **SarcGraph** more accessible to the broader
+research community.
+
 ## Project Roadmap <a name="roadmap"></a>
 
 ## Installation Instructions <a name="install"></a>
 
+### Get a copy of the SarcGraph repository on your local machine
+
+You can do this by clicking the green ``<> code`` button and selecting ``Download Zip`` or by running the following command in terminal:
+
+```bash
+git clone https://github.com/Sarc-Graph/SarcGraph-2.0.git
+```
+
+### Create and activate a conda virtual environment
+
+1. Install [Anaconda](https://docs.anaconda.com/anaconda/install/) on your local machine.
+
+2. Type the following command in terminal to create a virtual envirnoment and install required packages:
+
+```bash
+conda env create --file=environments.yml python=3.10
+```
+
+3. Activate your virtual environment.
+
+```bash
+conda activate sarcgraph-env
+```
+
+### Install SarcGraph
+
+SarcGraph can be installed using ``pip``:
+
+```bash
+pip install sarcgraph
+```
+
 ## Tutorial <a name="tutorial"></a>
 
-This GitHub repository contains a folder called ``tutorials`` that contains an example dataset and python script for running the code.
+This GitHub repository contains a folder called ``tutorials`` that contains demos to extensively show how this package an be used to analize videos or images of HiPSC-CMs.
 
 ### What's in the package <a name="whats-in-package"></a>
 
-The package contains two seperate modules: `sarcgraph` for sarcomere detection and tracking and `sarcgraph_tools` for running further analysis and visualizations.
+The package contains two seperate modules: `sg` for sarcomere detection and tracking and `sg_tools` for running further analysis and visualizations.
 
-#### `sarcgraph` <a name="sarcgraph.py"></a>
-`sarcgraph` module can take a video/image file as an input or a numpy array (more details in tutorials). This module then processes the input file into a numpy array and can run 3 functions on the data consecutively: `zdisc_segmentation`, `zdisc_tracking`, `sarcomere_detection`. Here is a summary of what each function does:
+### `sarcgraph.sg` <a name="sarcgraph.py"></a>
+`sarcgraph.sg` module takes a video/image file as input (more details in tutorials). This module then processes the input file to detect and track zdiscs and sarcomeres through running 3 tasks:
 
-- *`zdisc_segmentation`:* Segment zdiscs in each frame of the input file and outputs a pandas `DataFrame` and saves the file in a folder defined by the user if `save_data=True`. Each row of the dataframe is a zdisc and columns are:
+ - Zdisc Segmentation,
+ - Zdisc Tracking,
+ - Sarcomere Detection.
+
+Here is a list of functions developed for each task:
+
+- `zdisc_segmentation`: Detect zdiscs in each frame of the input video/image and saves the following information into a pandas `DataFrame`:
+
 > - `frame`: (frame number) 
 > - `x` and `y`: (X and Y position of the zdisc center in number of pixels)
-> - `p1_x`, `p1_y` and p2_x`, `p2_y`: (X and Y position of both ends of a zdisc in number of pixels)
+> - `p1_x`, `p1_y` and `p2_x`, `p2_y`: (X and Y position of both ends of a zdisc in number of pixels)
 
-- *`zdisc_tracking`:* The input to this function could be either a video/image (or the numpy array of input file) or pandas dataframe of segmented zdiscs in the format explained before. The output adds `particle` (particle_id) and `freq` (number of frames in which a zdiscs is tracked).
+- `zdisc_tracking`: Tracks detected zdiscs in the input video over all frames and adds the following information to the pandas `DataFrame`:
 
-- *`sarcomere_detection`:* The input to this function could be either a video/image (or the numpy array of input file) or a pandas dataframe tracked zdiscs in the format explained before. *The output is a 3d numpy array [5, number of tracked sarcomeres, number of frames] where on the first index the values are X anf Y position of the center of a sarcomere, sarcomere length, sarcomere width, and sarcomere angle. But, it is better to keep store this as a dataframe too.*
+> - `particle`: (zdisc id)
+> - `freq`: (number of frames in which a zdiscs is tracked)
 
-If `save_data` parameter is set to `True` each function saves outputs to a folder specified by the user.
+- `sarcomere_detection`: Detects sarcomeres in the input video/image using tracked zdiscs `DataFrame` and saves the following information into a new pandas `DataFrame`:
+
+> - `particle`: (zdisc id)
+> - `freq`: (number of frames in which a zdiscs is tracked)
+
 
 #### `sarcgraph_tools` <a name="sarcgraph_tools.py"></a>
 
