@@ -1,5 +1,5 @@
-from sarcgraph.sarcgraph import SarcGraph
-from sarcgraph.sarcgraph_tools import SarcGraphTools
+from sarcgraph.sg import SarcGraph
+from sarcgraph.sg_tools import SarcGraphTools
 
 
 def pytest_sessionstart(session):
