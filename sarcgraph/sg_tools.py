@@ -25,6 +25,7 @@ from sarcgraph.sg import SarcGraph
 
 simplefilter("ignore", category=ConvergenceWarning)
 
+
 class SarcGraphTools:
     def __init__(
         self,
@@ -65,7 +66,7 @@ class SarcGraphTools:
     class TimeSeries:
         def __init__(self, sg_tools):
             """Provides the tools to apply Gaussian Process Regression (GPR) on
-             timeseries of detected sarcomere
+            timeseries of detected sarcomere
             """
             self.sg_tools = sg_tools
 
@@ -206,7 +207,7 @@ class SarcGraphTools:
     #############################################################
     class Visualization:
         def __init__(self, sg_tools):
-            """Provides tools to visualize the results of post-processing 
+            """Provides tools to visualize the results of post-processing
             analysis on detected sarcomeres.
             """
             self.sg_tools = sg_tools
@@ -456,8 +457,7 @@ class SarcGraphTools:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
         def F_eigenval_animation(self):
-            """Visualize the eigenvalues of F over all frames
-            """
+            """Visualize the eigenvalues of F over all frames"""
             raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
             F_all = self.sg_tools._load_recovered_info("F")
             J_all = self.sg_tools._load_recovered_info("J")
@@ -789,7 +789,7 @@ class SarcGraphTools:
                     node_scores.append(0)
 
             plt.figure(figsize=(5, 5))
-            plt.axis('equal')
+            plt.axis("equal")
             edges, weights = zip(*nx.get_edge_attributes(G, "weight").items())
             nx.draw(
                 G,
@@ -869,7 +869,7 @@ class SarcGraphTools:
                 segmented_zdiscs_frame = segmented_zdiscs.loc[
                     segmented_zdiscs.frame == frame
                 ].copy()
-                segmented_zdiscs_frame.loc[:, "frame"] = 0.
+                segmented_zdiscs_frame.loc[:, "frame"] = 0.0
                 tracked_zdiscs_frame = sg_image.zdisc_tracking(
                     segmented_zdiscs=segmented_zdiscs_frame
                 )
@@ -1030,7 +1030,7 @@ class SarcGraphTools:
     class Analysis:
         def __init__(self, sg_tools):
             """Provides tools for post processing analysis of detected
-             sarcomeres.
+            sarcomeres.
             """
             self.sg_tools = sg_tools
 
@@ -1283,7 +1283,7 @@ class SarcGraphTools:
             return info_dict
 
         def compute_ts_params(self) -> pd.DataFrame:
-            """Compute and save timeseries time constants (contraction time, 
+            """Compute and save timeseries time constants (contraction time,
             relaxation time, flat time, period, offset, etc.).
 
             Returns
@@ -1429,8 +1429,9 @@ class SarcGraphTools:
             # load tracked zdiscs:
             if tracked_zdiscs is None:
                 if file_path is None:
-                    raise ValueError("either file_path or " + 
-                        "tracked_zdiscs should be specified."
+                    raise ValueError(
+                        "either file_path or "
+                        + "tracked_zdiscs should be specified."
                     )
                 tracked_zdiscs = sg_video.zdisc_tracking(
                     file_path, save_output=False
