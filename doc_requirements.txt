@@ -8,7 +8,6 @@ numpy
 matplotlib
 networkx
 pandas
-pickle
 trackpy
 scikit-image
 sk-video
