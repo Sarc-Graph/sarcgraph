@@ -103,40 +103,35 @@ frame,sarc_id,x,y,length,width,angle,zdiscs
 
 `sarcgraph.sg_tools` module consists of 3 subclasses:
 
-- `TimeSeries` for processing timeseries of detected and tracked sarcomeres *it makes sense to move time series to the `sarcgraph` module since it is a step that has to be done.*
-- `Analysis` for extracting desired information out of the original input file
-- `Visualization` for plotting different types of extracted information
+- `TimeSeries`: Process timeseries of detected and tracked sarcomeres
+
+> - `sarcomeres_gpr()`: Applies Gaussian Process Regression (GPR) on each recovered timeseries characteristic of all detected sarcomere to reduce the noise and fill in the missing data
+
+- `Analysis`: Extract more information from detected sarcomeres characteristics timeseries
+
+> - `compute_F_J`: Computes the average deformation gradient (F) and its jacobian (J)
+> - `compute_OOP`: Computes the Orientation Order Parameter (OOP)
+> - `compute_metrics`: Computes {OOP, C_iso, C_OOP, s_til, s_avg} as defined in the [SarcGraph paper](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009443)
+> - `compute_ts_params`: Computes timeseries constants (contraction time, relaxation time, flat time, period, offset)
+> - `create_spatial_graph`: Generates a spatial graph of tracked sarcomeres where edges indicate sarcomeres and edge weights indicates the ratio of the frames in which that sarcomere is detected
+
+- `Visualization`: Visualize detected sarcomeres information
+
+> - `zdiscs_and_sarcs`: Visualizes detected zdiscs and sarcomeres in the chosen frame
+> - `contraction`:Visualizes detected sarcomeres in every frame as a gif file
+> - `normalized_sarcs_length`: Plots normalized length of all detected sarcomeres vs frame number
+> - `OOP`: Plots recovered Orientational Order Parameter
+> - `F`: Plots recovered deformation gradient
+> - `J`: Plots recovered deformation jacobian
+> - `F_eigenval_animation`: Visualizes the eigenvalues of F vs frame number
+> - `timeseries_params`: Visualizes time series parameters
+> - `dendrogram`: Clusters timeseries and plots a dendrogram of the clusters
+> - `spatial_graph`: Visualizes the spatial graph
+> - `tracked_vs_untracked`: Visualizes metrics that compare the effect of tracking sarcomeres in a video vs only detecting sarcomeres in each frame without tracking
 
 To use this module an object of the class `SarcGraphTools should be created by setting the `input_dir` to the folder that contains the info saved from running full sarcomere detection and timeseries processing on the input data.
 
-##### `TimeSeries` <a name="sarcgraph_tools.TimeSeries"></a>
-*This will be moved to `sarcgraph.py`
-
-##### `Visualization` <a name="sarcgraph_tools.Visualization"></a>
-
-- `zdiscs_and_sarcs
-- `contraction
-- plot_F
-- plot_J
-- F_eigenval_animation
-- plot_dendrogram
-
-##### `Analysis` <a name="sarcgraph_tools.Analysis"></a>
-
-- compute_F
-
-### Preparing data for analysis <a name="data_prep"></a>
-
-The input data can be an image, a video, or a numpy array. 
-### Preparing an input file<a name="input"></a>
-
-### Running the code
-
-### Understanding the output files
-
 ## Validation <a name="validation"></a>
-
-## To-Do List <a name="todo"></a>
 
 ## References to Related Work <a name="references"></a>
 
