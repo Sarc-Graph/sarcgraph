@@ -25,13 +25,13 @@ SarcGraph needs the following packages to run:
 +-------------------+---------+
 | scikit-image      | 0.19.3  |
 +-------------------+---------+
-| scikit-learn      | 1.2.0   |
+| scikit-learn      | 1.2.1   |
 +-------------------+---------+
 | scipy             | 1.10.0  |
 +-------------------+---------+
 | sk-video          | 1.1.10  |
 +-------------------+---------+
-| trackpy           | 0.5.0   |
+| trackpy           | 0.6.1   |
 +-------------------+---------+
 
 **Installation Steps**
@@ -63,7 +63,8 @@ Run the following commands to install prerequisites:
 
 .. code-block:: bash
 
-    $ conda install -c conda-forge ffmpeg=4.2.2 matplotlib=3.5.2 networkx=2.8.4 numpy=1.23.5 pandas=1.5.2 scikit-image=0.19.3 scikit-learn=1.2.0 scipy=1.10.0 scikit-video=1.1.10 trackpy=0.5.0
+    $ conda install -c anaconda networkx=2.8.4 numpy=1.23.5 pandas=1.5.2 scikit-image=0.19.3 scikit-learn=1.2.1 scipy=1.10.0
+    $ conda install -c conda-forge ffmpeg=4.2.2 matplotlib=3.5.2 sk-video=1.1.10 trackpy=0.6.1
 
 **4. Install SarcGraph**
 
@@ -79,7 +80,7 @@ Run the following command and check if it runs with no errors:
 
 .. code-block:: bash
 
-    $ python -c "from sarcgraph import SarcGraph"
+    $ python -c "from sarcgraph.sg import SarcGraph"
 
 **Troubleshooting**
 -------------------

@@ -27,7 +27,7 @@ research community.
 
 ## **Installation Instructions** <a name="install"></a>
 
-### **Get a copy of the SarcGraph repository on your local machine**
+### **Get a copy of the [SarcGraph repository](https://github.com/Sarc-Graph/sarcgraph) on your local machine**
 
 You can do this by clicking the green ``<> code`` button and selecting ``Download Zip`` or by running the following command in terminal:
 
