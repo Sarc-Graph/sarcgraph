@@ -15,7 +15,7 @@ SarcGraph documentation
    API Reference <reference/index>
 
 **SarcGraph** is a tool for automatic detection, tracking and analysis of
-zdiscs and sarcomeres in movies of beating *human induced pluripotent stem
+z-discs and sarcomeres in movies of beating *human induced pluripotent stem
 cell-derived cardiomyocytes (hiPSC-CMs)*.
 
 Overview
