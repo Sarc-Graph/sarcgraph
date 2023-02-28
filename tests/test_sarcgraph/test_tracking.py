@@ -1,11 +1,14 @@
 import numpy as np
 import pandas as pd
 import os
+import pytest
+
 from sarcgraph.sg import SarcGraph
+
+sg_vid = SarcGraph()
 
 
 def test_zdisc_tracking_output_fmt():
-    sg_vid = SarcGraph(file_type="video")
     tracked_zdiscs = sg_vid.zdisc_tracking(
         "samples/sample_0.avi", save_output=False
     )
@@ -26,13 +29,12 @@ def test_zdisc_tracking_output_fmt():
 
 
 def test_zdisc_tracking_save():
-    sg_vid = SarcGraph("test", file_type="video")
-    _ = sg_vid.zdisc_tracking("samples/sample_0.avi")
-    assert os.path.exists(f"./{sg_vid.output_dir}/tracked-zdiscs.csv")
+    sg_test = SarcGraph("test")
+    _ = sg_test.zdisc_tracking("samples/sample_0.avi")
+    assert os.path.exists(f"./{sg_test.output_dir}/tracked-zdiscs.csv")
 
 
 def test_zdisc_tracking():
-    sg_vid = SarcGraph(file_type="video")
     tracked_zdiscs = sg_vid.zdisc_tracking(
         "samples/sample_0.avi", save_output=False
     )
@@ -51,3 +53,12 @@ def test_zdisc_tracking():
         segmented_zdiscs=segmented_zdiscs, save_output=False
     )
     assert np.allclose(tracked_zdiscs.to_numpy(), expected.to_numpy())
+
+
+def test_zdisc_tracking_input():
+    with pytest.raises(TypeError):
+        sg_vid.zdisc_tracking(segmented_zdiscs=np.ones((2, 4)))
+    columns = ["one", "two", "three"]
+    dataframe = pd.DataFrame(columns=columns)
+    with pytest.raises(ValueError):
+        sg_vid.zdisc_tracking(segmented_zdiscs=dataframe)

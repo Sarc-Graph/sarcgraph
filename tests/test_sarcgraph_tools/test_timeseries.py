@@ -6,6 +6,11 @@ from sarcgraph.sg_tools import SarcGraphTools
 sg_tools = SarcGraphTools()
 
 
+def test_sg_tools_input_dir():
+    with pytest.raises(FileNotFoundError):
+        SarcGraphTools("worng-input")
+
+
 def test_dtw_distance():
     s1 = np.array([1, 2, 3])
     s2 = np.array([2, 2, 2, 3, 4])

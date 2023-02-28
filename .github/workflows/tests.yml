@@ -23,7 +23,7 @@ jobs:
     - name: Test with pytest
       run: |
         conda install -c conda-forge ffmpeg
-        pytest tests/ --verbose --failed-first --cov=src --cov-report=xml --disable-warnings
+        pytest tests/ --verbose --failed-first --cov=sarcgraph --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

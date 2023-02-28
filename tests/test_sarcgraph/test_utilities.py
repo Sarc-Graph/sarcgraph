@@ -25,7 +25,7 @@ def test_video_loader_avi():
 
 
 def test_video_loader_tif():
-    frames = sg_vid._to_gray(sg_vid._data_loader("samples/sample_3.tif"))
+    frames = sg_vid._to_gray(sg_vid._data_loader("samples/sample_6.tif"))
     assert frames.shape == (30, 512, 512, 1)
 
 
@@ -53,7 +53,7 @@ def test_image_load_as_video():
             "manually or change the file_type to 'video."
         ),
     ):
-        sg_img._to_gray(sg_img._data_loader("samples/sample_3.tif"))
+        sg_img._to_gray(sg_img._data_loader("samples/sample_6.tif"))
 
 
 def test_save_numpy_file_name_str():
