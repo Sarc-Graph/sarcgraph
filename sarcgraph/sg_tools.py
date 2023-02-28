@@ -173,24 +173,15 @@ class SarcGraphTools:
             """
             sarcomeres = self.sg_tools._load_sarcomeres()
             cols = [
-                "frame",
-                "sarc_id",
-                "zdiscs",
                 "x",
                 "y",
                 "length",
                 "angle",
                 "width",
             ]
-            if not isinstance(sarcomeres, pd.DataFrame):
-                raise TypeError("input should be a pd.Dataframe.")
-            if set(sarcomeres.columns) != set(cols):
-                raise ValueError(
-                    "input format should match the output of"
-                    "SarcGraph().sarcomere_detection function."
-                )
+
             num_sarcs = sarcomeres.sarc_id.max() + 1
-            for info_type in cols[3:]:
+            for info_type in cols:
                 for sarc_num in range(num_sarcs):
                     row_mask = sarcomeres.sarc_id == sarc_num
                     s = sarcomeres.loc[row_mask, info_type].to_numpy()
@@ -248,6 +239,7 @@ class SarcGraphTools:
                 dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
+
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
@@ -823,7 +815,7 @@ class SarcGraphTools:
                 bbox_inches="tight",
             )
             if self.sg_tools.include_eps:
-                plt.savefig(f"./{output_file}.png")
+                plt.savefig(f"./{output_file}.eps")
 
         def tracked_vs_untracked(
             self,
@@ -1493,19 +1485,12 @@ class SarcGraphTools:
     ###########################################################
     #                    Utility Functions                    #
     ###########################################################
-    def _run_all(
-        self,
-        file_path: str = None,
-        raw_frames: np.ndarray = None,
-        segmented_zdiscs: pd.DataFrame = None,
-    ):
+    def _run_all(self, file_path: str = None):
         self.analysis.compute_F_J()
         self.analysis.compute_OOP()
         self.analysis.compute_metrics()
         self.analysis.compute_ts_params()
-        self.analysis.create_spatial_graph(
-            file_path, raw_frames, segmented_zdiscs
-        )
+        self.analysis.create_spatial_graph(file_path)
 
     def _load_raw_frames(self):
         try:

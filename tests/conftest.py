@@ -13,4 +13,4 @@ def pytest_sessionstart(session):
     input_file = "samples/sample_0.avi"
     sg.sarcomere_detection(input_file)
     sg_tools.time_series.sarcomeres_gpr()
-    sg_tools.run_all(input_file)
+    sg_tools._run_all(input_file)

@@ -553,11 +553,13 @@ class SarcGraph:
                 file_path, raw_frames, sigma, min_length, save_output
             )
 
+        if type(segmented_zdiscs) != pd.DataFrame:
+            raise TypeError("segmented_zdiscs shoulb be a dataframe.")
+
         correct_columns = set(("frame", "x", "y")).issubset(
             set(segmented_zdiscs.columns)
         )
-        if type(segmented_zdiscs) != pd.DataFrame:
-            raise TypeError("segmented_zdiscs shoulb be a dataframe.")
+
         if not correct_columns:
             raise ValueError(
                 "segmented_zdiscs must contain at least three columns: 'x', "
