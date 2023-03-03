@@ -5,13 +5,19 @@ with open("README.md", "r") as fh:
 
 setup(
     name="sarcgraph",
-    version="0.1.3",
+    version="0.1.0",
     author="Saeed Mohammadzadeh",
     author_email="saeedmhz@bu.edu",
     description="A software for sarcomere detection and tracking",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Sarc-Graph/sarcgraph",
+    url="https://pypi.org/project/sarcgraph/",
+    project_urls={
+        "Source": "https://github.com/Sarc-Graph/sarcgraph",
+        "Documentation": "https://sarc-graph.readthedocs.io/en/latest/",
+    },
+    maintainer=["Saeed Mohammadzadeh", "Emma Lejeune"],
+    maintainer_email=["saeedmhz@bu.edu", "elejeune@bu.edu"],
     packages=["sarcgraph"],
     license="MIT",
     classifiers=[
