@@ -23,10 +23,10 @@ class SarcGraph:
         Attributes
         ----------
         output_dir : str, optional
-            location to save processed information, by default ``test-run``
+            location to save processed information, by default ``'test-run'``
         file_type : str, optional
-            image for single-frame samples and video for multi-frame
-            samples, by default video
+            use ``'image'`` for single-frame samples and ``'video'`` for
+            multi-frame samples, by default ``'video'``
         """
         if file_type not in ["video", "image"]:
             raise ValueError(
@@ -343,7 +343,7 @@ class SarcGraph:
         Parameters
         ----------
         file_path : str
-            The address of an image or video file
+            address of the input video/image file
         raw_frames  : np.ndarray, shape=(frames, dim_1, dim_2, channels)
             Raw input image or video given as a 4 dimensional array
         sigma : float
@@ -357,15 +357,9 @@ class SarcGraph:
         -------
         pd.DataFrame
             Information of all detected zdiscs in every frame. Columns are
-            ``frame`` (frame number), ``x`` and ``y`` (zdiscs center position),
-            ``p1_x``, ``p1_y``, ``p2_x``, ``p2_y`` (zdiscs end points
-            positions).
-
-        Notes
-        -----
-        If ``file_path`` and ``raw_frames`` are both unspecified, this function
-        searches for saved ``raw-frames.npy`` in the specified output directory
-        , ``output_dir``.
+            ``'frame'`` (frame number), ``'x'`` and ``'y'`` (zdiscs center
+            position), ``'p1_x'``, ``'p1_y'``, ``'p2_x'``, ``'p2_y'`` (zdiscs
+            end points positions).
         """
         filtered_frames = self._process_input(
             file_path, raw_frames, sigma, save_output
@@ -497,56 +491,60 @@ class SarcGraph:
         save_output: bool = True,
     ) -> pd.DataFrame:
         """Track detected Z-Discs in a video. The input could be the address to
-        a video/image sample, raw frames as a numpy array, or segmented zdiscs
-        information in a pandas dataframe. If the function is run with no
-        inputs, it will search for 'raw-frames.npy', or 'segmented-zdiscs.csv'
-        in the specified output directory ``SarcGraph().output_dir``.
+        a video/image sample (``file_path``), raw frames as a numpy array
+        (``raw_frames``), or segmented zdiscs information in a pandas datafram
+        (``segmented_zdiscs``)e. If the function is run with no inputs, it will
+        search for 'raw-frames.npy', or 'segmented-zdiscs.csv' in the
+        specified output directory ``SarcGraph().output_dir``.
 
         Parameters
         ----------
         file_path : str
             The address of an image or a video file to be loaded
-        raw_frames  : np.ndarray, shape=(frames, dim_1, dim_2, channels)
+        raw_frames : np.ndarray, shape=(frames, dim_1, dim_2, channels)
             Raw input image or video given as a 4 dimensional array
         segmented_zdiscs : pd.DataFrame
             Information of all detected zdiscs in every frame.
         sigma : float
-            Standard deviation for Gaussian kernel, by default 1.0
+            Standard deviation for Gaussian kernel, by default ``1.0``
         min_length : int
-            Minimum length for zdisc contours measured in pixels, by default 8
+            Minimum length for zdisc contours measured in pixels, by default
+            ``8``
         tp_depth : float, optional
             the maximum distance features can move between frames, by default
-            4.0
+            ``4.0``
         full_track_ratio : float, optional
-            by default 0.75
+            by default ``0.75``
         skip_merging : bool, optional
             skipping the merging step will result in fewer fully tracked
-            zdiscs, by default False
+            zdiscs, by default ``False``
         save_output : bool
-            by default True
+            by default ``True``
 
         Returns
         -------
         pd.DataFrame
-            tracked zdiscs information. Columns are ``frame`` (frame number),
-            ``x`` and ``y`` (zdiscs center position), ``p1_x``, ``p1_y``,
-            ``p2_x``, ``p2_y`` (zdiscs end points positions), and ``particle``
-            (id of each tracked zdisc).
+            tracked zdiscs information. Columns are ``'frame'`` (frame number),
+            ``'x'`` and ``'y'`` (zdiscs center position), ``'p1_x'``,
+            ``'p1_y'``, ``'p2_x'``, ``'p2_y'`` (zdiscs end points positions),
+            and ``'particle'`` (id of each tracked zdisc).
 
         Notes
         -----
         - If ``SarcGraph().file_type='image'``, tracking will be skipped.
+
         - For a detailed description of the Trackpy package check:
-          http://soft-matter.github.io/trackpy/v0.5.0/tutorial.html
+            http://soft-matter.github.io/trackpy/v0.5.0/tutorial.html
+
         - For a detailed description of the OPTICS algorithm check:
-          https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
+            https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
 
         See Also
         --------
-        SarcGraph().zdisc_segmentation: A function to detect zdiscs in a video
-        or image sample
-        SarcGraph()._merge_tracked_zdiscs: A post processing step to group
-        related partially tracked zdiscs using the OPTICS algorithm
+        :func:`sarcgraph.sg.SarcGraph.zdisc_segmentation`
+
+        :func:`sarcgraph.sg.SarcGraph._merge_tracked_zdiscs`
+
         """
         if segmented_zdiscs is None:
             segmented_zdiscs = self.zdisc_segmentation(
@@ -642,7 +640,8 @@ class SarcGraph:
         c_avg_length: float = 1.0,
         c_angle: float = 1.0,
         c_length_diff: float = 1.0,
-        l_avg: float = 15,
+        l_avg: float = 15.0,
+        l_max: float = 30.0,
     ) -> nx.Graph:
         """Assigns a score to each connection of the input graph. Higher score
         indicates the two corresponding zdiscs are likely to be two ends of a
@@ -666,7 +665,10 @@ class SarcGraph:
             by default 1.0
         l_avg : float, optional
             an initial guess for the average length of sarcomeres in pixels, by
-            default 15
+            default 15.0
+        l_max : float, optional
+            Max allowable length for the length of sarcomeres in pixels, by
+            default 30.0
 
         Returns
         -------
@@ -679,35 +681,36 @@ class SarcGraph:
                 score = 0
                 v1 = G.nodes[neighbor]["pos"] - G.nodes[node]["pos"]
                 l1 = np.linalg.norm(v1)
-                avg_length_score = np.exp(-np.pi * (1 - l1 / l_avg) ** 2)
-                for far_neighbor in G.neighbors(neighbor):
-                    if far_neighbor in [node, neighbor]:
-                        pass
-                    else:
-                        v2 = (
-                            G.nodes[neighbor]["pos"]
-                            - G.nodes[far_neighbor]["pos"]
-                        )  # vector connecting neighbor to far_neighbor
-                        l2 = np.linalg.norm(v2)
+                if l1 <= l_max:
+                    avg_length_score = np.exp(-np.pi * (1 - l1 / l_avg) ** 2)
+                    for far_neighbor in G.neighbors(neighbor):
+                        if far_neighbor in [node, neighbor]:
+                            pass
+                        else:
+                            v2 = (
+                                G.nodes[neighbor]["pos"]
+                                - G.nodes[far_neighbor]["pos"]
+                            )  # vector connecting neighbor to far_neighbor
+                            l2 = np.linalg.norm(v2)
 
-                        d_theta = np.arccos(np.dot(v1, v2) / (l1 * l2)) / (
-                            np.pi / 2
-                        )
-                        d_l = np.abs(l2 - l1) / l1
-
-                        angle_score = (
-                            np.power(1 - d_theta, 2) if d_theta >= 1 else 0
-                        )
-                        diff_length_score = 1 / (1 + d_l)
-
-                        score = np.max(
-                            (
-                                score,
-                                c_length_diff * diff_length_score
-                                + c_angle * angle_score,
+                            d_theta = np.arccos(np.dot(v1, v2) / (l1 * l2)) / (
+                                np.pi / 2
                             )
-                        )
-                score += c_avg_length * avg_length_score
+                            d_l = np.abs(l2 - l1) / l1
+
+                            angle_score = (
+                                np.power(1 - d_theta, 2) if d_theta >= 1 else 0
+                            )
+                            diff_length_score = 1 / (1 + d_l)
+
+                            score = np.max(
+                                (
+                                    score,
+                                    c_length_diff * diff_length_score
+                                    + c_angle * angle_score,
+                                )
+                            )
+                    score += c_avg_length * avg_length_score
                 edges_attr_dict[(node, neighbor)] = score
 
         edges_attr_dict_keep_max = {}
@@ -806,11 +809,10 @@ class SarcGraph:
         save_output: bool = True,
     ) -> Tuple[pd.DataFrame, List[nx.Graph]]:
         """Detect sarcomeres in a video/image. The input could be the address
-        to the video/image sample, raw frames as a numpy array, segmented
-        zdiscs information in a pandas dataframe, or a dataframe of tracked
-        zdiscs. If the function is run with no inputs, it will search for
-        'raw-frames.npy', 'segmented-zdiscs.csv', or 'tracked-zdiscs.csv' in
-        the specified output directory ``SarcGraph().output_dir``.
+        to the video/image sample (``file_path``), raw frames as a numpy array
+        (``raw_frames``), segmented zdiscs information in a pandas dataframe
+        (``segmented_zdiscs``), or a dataframe of tracked zdiscs
+        (``tracked_zdiscs``).
 
         Parameters
         ----------
@@ -823,52 +825,53 @@ class SarcGraph:
         tracked_zdiscs : pd.DataFrame
             Information of tracked zdiscs
         sigma : float
-            Standard deviation for Gaussian kernel, by default 1.0
+            Standard deviation for Gaussian kernel, by default ``1.0``
         min_length : int
-            Minimum length for zdisc contours measured in pixels, by default 8
+            Minimum length for zdisc contours measured in pixels, by default
+            ``8``
         tp_depth : float, optional
             the maximum distance features can move between frames, by default
-            4.0
+            ``4.0``
         full_track_ratio : float, optional
             Frame ratio to seperate partially tracked vs fully tracked
-            sarcomeres, by default 0.75
+            sarcomeres, by default ``0.75``
         skip_merging : bool, optional
             skipping the merging step will result in fewer fully tracked
-            zdiscs, by default False
+            zdiscs, by default ``False``
         c_avg_length : float, optional
             comparison of the length of a connection with ``l_avg`` affects the
             connection score, ``c_avg_length`` sets the relative effect of this
-            score metric compared to the other two, by default 1.0
+            score metric compared to the other two, by default ``1.0``
         c_angle : float, optional
             the angle between a connection and its neighboring connections
             affects the connection score, ``c_angle`` sets the relative effect
-            of this score metric compared to the other two, by default 1.0
+            of this score metric compared to the other two, by default ``1.0``
         c_length_diff : float, optional
             comparison of the length of a connection with the length of all
             neighboring connections affects the score, ``c_length_diff`` sets
             the relative effect of this score metric compared to the other two,
-            by default 1.0
+            by default ``1.0``
         l_avg : float, optional
             an initial guess for the average length of sarcomeres in pixels, by
-            default 15
+            default ``15.0``
         score_threshold : float
             any connection with a score less than the threshold will be
-            removed, by default 0.1
+            removed, by default ``0.1``
         angle_threshold : float
             if a zdisc has two valid connection the angle between must be
             higher than the theshold, otherwise the connection with a lower
-            score will be removed, by default 1.2 (in radians)
+            score will be removed, by default ``1.2`` (in radians)
         save_output : bool
-            by default True
+            by default ``True``
 
         Returns
         -------
         pd.DataFrame
-            Detected sarcomeres information. Columns are ``frame`` (frame
-            number), ``sarc_id`` (sarcomere id), ``zdiscs`` (particle id of the
-            two zdiscs forming a sarcomere), ``x`` and ``y`` (sarcomere center
-            position), ``length``, ``width``, and ``angle`` (sarcomere length,
-            width, and angle).
+            Detected sarcomeres information. Columns are ``'frame'`` (frame
+            number), ``'sarc_id'`` (sarcomere id), ``'zdiscs'`` (particle id of
+            the two zdiscs forming a sarcomere), ``'x'`` and ``'y'`` (sarcomere
+            center position), ``'length'``, ``'width'``, and ``'angle'``
+            (sarcomere length, width, and angle).
         List[nx.Graph]:
             A list of graphs each indicating connected sarcomeres (myofibrils)
 
@@ -876,14 +879,15 @@ class SarcGraph:
         -----
         - For a detailed description of the Trackpy package check:
           http://soft-matter.github.io/trackpy/v0.5.0/tutorial.html
+
         - For a detailed description of the OPTICS algorithm check:
           https://scikit-learn.org/stable/modules/generated/sklearn.cluster.OPTICS.html
 
         See Also
         --------
-        SarcGraph().zdisc_segmentation: detects Z-Discs in all frames of a
-        video/image sample
-        SarcGraph().zdisc_tracking: tracks detected Z-Discs in a video sample
+        :func:`sarcgraph.sg.SarcGraph.zdisc_segmentation`
+
+        :func:`sarcgraph.sg.SarcGraph.zdisc_tracking`
         """
         if tracked_zdiscs is None:
             tracked_zdiscs = self.zdisc_tracking(

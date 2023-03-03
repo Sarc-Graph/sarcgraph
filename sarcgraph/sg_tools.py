@@ -168,8 +168,7 @@ class SarcGraphTools:
 
             See Also
             --------
-            SarcGraph().sarcomere_detection: detects and tracks sarcomeres in a
-            video/image
+            :func:`sarcgraph.sg.SarcGraph.sarcomere_detection`
             """
             sarcomeres = self.sg_tools._load_sarcomeres()
             cols = [
@@ -710,8 +709,7 @@ class SarcGraphTools:
 
             See Also
             --------
-            SarcGraphTools.analysis.create_spatial_graph(): creates and saves
-            the spatial graph of zdiscs and sarcomres
+            :func:`sarcgraph.sg_tools.SarcGraphTools.Analysis.create_spatial_graph`
             """
             G = nx.read_gpickle(
                 f"{self.sg_tools.output_dir}/spatial-graph.pkl"
@@ -1486,6 +1484,13 @@ class SarcGraphTools:
     #                    Utility Functions                    #
     ###########################################################
     def _run_all(self, file_path: str = None):
+        """Runs all functions in the Analysis class and saves outputs.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the input video or image file.
+        """
         self.analysis.compute_F_J()
         self.analysis.compute_OOP()
         self.analysis.compute_metrics()
@@ -1554,5 +1559,5 @@ class SarcGraphTools:
     def _raise_data_not_found(self, data_file: str):
         raise FileNotFoundError(
             f"{data_file} was not found in {self.input_dir}/. Run "
-            "SarcGraphTools().run_all() first."
+            "SarcGraphTools()._run_all() first."
         )
