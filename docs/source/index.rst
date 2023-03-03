@@ -2,10 +2,6 @@
 
 .. _sarcgraph_docs_mainpage:
 
-#######################
-SarcGraph documentation
-#######################
-
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -13,6 +9,10 @@ SarcGraph documentation
    Getting Started <installation>
    Demos and Tutorials <tutorial/index>
    API Reference <reference/index>
+
+#######################
+SarcGraph documentation
+#######################
 
 **SarcGraph** is a tool for automatic detection, tracking and analysis of
 z-discs and sarcomeres in movies of beating *human induced pluripotent stem
@@ -26,6 +26,15 @@ Overview
 hiPSC-derived cardiomyocytes" <https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009443>`_.
 This package is created to make **SarcGraph** more accessible to the broader
 research community.
+
+SarcGraph vs legacy Sarc-Graph
+------------------------------
+
+This package is the new version of the `legacy Sarc-Graph <https://github.com/elejeune11/Sarc-Graph>`_ 
+library. The new `SarcGraph <https://github.com/Sarc-Graph/sarcgraph>`_ offers 
+significant enhancements over its predecessor, such as new algorithms for 
+improved sarcomere detection and tracking, faster computation times, and a more 
+user-friendly library design.
 
 Key Features
 ------------
