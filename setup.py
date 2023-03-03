@@ -16,8 +16,10 @@ setup(
         "Source": "https://github.com/Sarc-Graph/sarcgraph",
         "Documentation": "https://sarc-graph.readthedocs.io/en/latest/",
     },
-    maintainer=["Saeed Mohammadzadeh", "Emma Lejeune"],
-    maintainer_email=["saeedmhz@bu.edu", "elejeune@bu.edu"],
+    maintainer=[
+        ("Saeed Mohammadzadeh", "saeedmhz@bu.edu"),
+        ("Emma Lejeune", "elejeune@bu.edu"),
+    ],
     packages=["sarcgraph"],
     license="MIT",
     classifiers=[
