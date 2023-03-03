@@ -178,6 +178,6 @@ To validate our methods and ensure correct implementation, we generated challeng
 
 ## Contact Information <a name="contact"></a>
 
-For information about this software, please get in touch with [Saeed Mohammadzadeh](mailto:saeedmhz@bu.edu).
+For information about this software, please get in touch with [Saeed Mohammadzadeh](mailto:saeedmhz@bu.edu) or [Emma Lejeune](mailto:elejeune@bu.edu).
 
 ## Acknowledgements <a name="acknowledge"></a>
