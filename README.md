@@ -1,16 +1,13 @@
 # **SarcGraph**
 
-[![license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Sarc-Graph/sarcgraph#license)
+[![python](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/) ![os](https://img.shields.io/badge/os-ubuntu%20|%20macos%20|%20windows-blue.svg) [![license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/Sarc-Graph/sarcgraph#license)
 
-[![flake8](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml)
-
-[![codecov](https://codecov.io/gh/Sarc-Graph/sarcgraph/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/sarcgraph)
-
-[![Documentation Status](https://readthedocs.org/projects/sarc-graph/badge/?version=latest)](https://sarc-graph.readthedocs.io/en/latest/?badge=latest)
+[![flake8](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml) [![codecov](https://codecov.io/gh/Sarc-Graph/sarcgraph/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/sarcgraph) [![Documentation Status](https://readthedocs.org/projects/sarc-graph/badge/?version=latest)](https://sarc-graph.readthedocs.io/en/latest/?badge=latest)
 
 ## **Table of Contents**
 * [Project Summary](#summary)
 * [Installation Instructions](#install)
+* [Contents](#contents)
 * [Tutorial](#tutorial) - [Notebooks](https://github.com/Sarc-Graph/sarcgraph/tree/main/tutorials)
 * [Validation](#validation)
 * [References to Related Work](#references)
@@ -23,9 +20,15 @@
 z-discs and sarcomeres in movies of beating *human induced pluripotent stem
 cell-derived cardiomyocytes (hiPSC-CMs)*.
 
+<br />
+<center><img src="figures/intro.png" width=30%></center>
+<br />
+
 SarcGraph was initially introduced in [Sarc-Graph: Automated segmentation, tracking, and analysis of sarcomeres in hiPSC-derived cardiomyocytes](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1009443).
 This package is created to make SarcGraph more accessible to the broader
 research community.
+
+**For more information visit [SarcGraph documentation](https://sarc-graph.readthedocs.io/en/latest/).**
 
 ## **Installation Instructions** <a name="install"></a>
 
@@ -60,6 +63,23 @@ SarcGraph can be installed using ``pip``:
 
 ```bash
 pip install sarcgraph
+```
+
+## **Contents** <a name="contents"></a>
+
+```bash
+|___ sarcgraph
+|        |___ docs/
+|        |___ figures/
+|                |___ *.png
+|        |___ samples/
+|        |___ sarcgraph/
+|                |___ __init__.py
+|                |___ sg.py
+|                |___ sg_tools.py
+|        |___ tests/
+|        |___ tutorials/
+|                |___ *.ipynb
 ```
 
 ## **Tutorial** <a name="tutorial"></a>
@@ -136,8 +156,28 @@ To use this module an object of the class `SarcGraphTools` should be created by 
 
 ## Validation <a name="validation"></a>
 
+To validate our methods and ensure correct implementation, we generated challenging synthetic videos with characteristics similar to beating hiPSC-CMs. We used these videos to evaluate the sarcomere detection algorithm by comparing recovered metrics to their known ground truth. The figure shows this process for one of many tested validation examples.
+
+<br />
+<center><img src="figures/validation.png" width=75%></center>
+<br />
+
 ## References to Related Work <a name="references"></a>
 
+* Zhao, B., Zhang, K., Chen, C. S., & Lejeune, E. (2021). Sarc-graph: Automated segmentation, tracking, and analysis of sarcomeres in hiPSC-derived cardiomyocytes. PLoS Computational Biology, 17(10), e1009443.
+
+* Allan, D. B., Caswell, T., Keim, N. C., Wel, C. M. van der, & Verweij, R. W. (2023). Soft-matter/trackpy: v0.6.1 (Version v0.6.1). Zenodo. https://doi.org/10.5281/zenodo.7670439
+
+* Toepfer, C. N., Sharma, A., Cicconet, M., Garfinkel, A. C., Mücke, M., Neyazi, M., Willcox, J. A., Agarwal, R., Schmid, M., Rao, J., & others. (2019). SarcTrack: An adaptable software tool for efficient large-scale analysis of sarcomere function in hiPSC-cardiomyocytes. Circulation Research, 124(8), 1172–1183.
+
+* Morris, T. A., Naik, 94 J., Fibben, K. S., Kong, X., Kiyono, T., Yokomori, K., & Grosberg, A. (2020). Striated myocyte structural integrity: Automated analysis of sarcomeric z-discs. PLoS Computational Biology, 16(3), e1007676.
+
+* Pasqualin, C., Gannier, F., Yu, A., Malécot, C. O., Bredeloux, P., & Maupoil, V. (2016). SarcOptiM for ImageJ: High-frequency online sarcomere length computing on stimulated cardiomyocytes. American Journal of Physiology-Cell Physiology, 311(2), C277–C283.
+
+* Ribeiro, A. J. S., Schwab, O., Mandegar, M. A., Ang, Y.-S., Conklin, B. R., Srivastava, D., & Pruitt, B. L. (2017). Multi-imaging method to assay the contractile mechanical output of micropatterned human iPSC-derived cardiac myocytes. Circulation Research, 120(10), 1572–1583. https://doi.org/10.1161/CIRCRESAHA.116.310363
+
 ## Contact Information <a name="contact"></a>
+
+For information about this software, please get in touch with [Saeed Mohammadzadeh](mailto:saeedmhz@bu.edu).
 
 ## Acknowledgements <a name="acknowledge"></a>
