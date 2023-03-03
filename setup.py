@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="sarcgraph",
-    version="0.1.2",
+    version="0.1.3",
     author="Saeed Mohammadzadeh",
     author_email="saeedmhz@bu.edu",
     description="A software for sarcomere detection and tracking",
