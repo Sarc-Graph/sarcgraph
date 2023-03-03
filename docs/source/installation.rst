@@ -162,7 +162,7 @@ You can generate the documentation locally by following these steps:
 .. code-block:: bash
 
     $ conda activate sarcgraph
-    $ sphinx sphinx-design sphinx-rtd-theme sphinx-copybutton nbsphinx ipykernel
+    $ pip install sphinx sphinx-design sphinx-rtd-theme sphinx-copybutton nbsphinx ipykernel
     $ conda install -c conda-forge pandoc
 
 2. Download the `SarcGraph repository <https://github.com/Sarc-Graph/sarcgraph>`_ 
