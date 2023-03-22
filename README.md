@@ -48,7 +48,7 @@ git clone https://github.com/Sarc-Graph/sarcgraph.git
 
 ```bash
 cd sarcgraph
-conda env create --file=environments.yml
+conda env create --file=environment.yml
 ```
 
 3. Activate your virtual environment.
