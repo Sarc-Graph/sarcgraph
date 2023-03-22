@@ -13,10 +13,12 @@ authors:
   - name: Emma Lejeune
     orcid: 0000-0001-8099-3468
     corresponding: true
-    affiliation: 1
+    affiliation: 2
 affiliations:
- - name: Boston University, USA
-   index: 1
+  - name: Department of Systems Engineering, Boston University, Massachusetts, the United States of America
+    index: 1
+  - name: Department of Mechanical Engineering, Boston University, Massachusetts, the United States of America
+    index: 2
 date: 02 March 2023
 bibliography: paper.bib
 ---
