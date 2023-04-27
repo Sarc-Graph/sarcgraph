@@ -224,6 +224,16 @@ class SarcGraph:
         save_output : bool
             by default True
 
+        Notes
+        -----
+        .. warning::
+            Here we use the ``skimage.measure.find_contours`` function to find
+            contours. returns contours with coordinates in (row, column) order,
+            which corresponds to (y, x) in Cartesian coordinates. Therefore, in
+            the rest of the code, we use ``y`` for the first dimension and ``x``
+            for the second dimension. For example, for plotting we use
+            ``plt.plot(y, x)``.
+
         Returns
         -------
         List[np.ndarray]
