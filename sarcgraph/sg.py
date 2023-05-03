@@ -23,7 +23,7 @@ class SarcGraph:
         Attributes
         ----------
         output_dir : str, optional
-            directory to save processed information, by default ``'test-run'``
+            location to save processed information, by default ``'test-run'``
         file_type : str, optional
             use ``'image'`` for single-frame samples and ``'video'`` for
             multi-frame samples, by default ``'video'``
