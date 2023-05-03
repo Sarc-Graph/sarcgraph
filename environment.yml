@@ -6,8 +6,8 @@ dependencies:
   - python=3.10
   - ffmpeg=4.2.2
   - matplotlib=3.5.2
+  - numpy=1.23.5
   - networkx
-  - numpy
   - pandas
   - pytest
   - pytest-cov

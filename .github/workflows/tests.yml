@@ -31,9 +31,7 @@ jobs:
         auto-activate-base: false
 
     - name: Test with pytest
-      run: |
-        conda install -c conda-forge ffmpeg
-        pytest tests/ --verbose --failed-first --cov=sarcgraph --cov-report=xml --disable-warnings
+      run: pytest tests/ --verbose --failed-first --cov=sarcgraph --cov-report=xml --disable-warnings
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
