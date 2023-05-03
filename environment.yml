@@ -1,4 +1,4 @@
-name: sarcgraph
+name: sarcgraph-dev
 channels:
   - defaults
   - conda-forge
@@ -16,3 +16,12 @@ dependencies:
   - scipy
   - sk-video
   - trackpy
+  - black
+  - flake8
+  - sphinx
+  - sphinx_rtd_theme
+  - sphinx-design
+  - sphinx-copybutton
+  - nbsphinx
+  - ipykernel
+  - pandoc

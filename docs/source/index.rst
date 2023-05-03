@@ -9,6 +9,7 @@
    Getting Started <installation>
    Demos and Tutorials <tutorial/index>
    API Reference <reference/index>
+   For Developers <dev_guide>
 
 #######################
 SarcGraph documentation
@@ -95,4 +96,21 @@ visualization.
          :click-parent:
 
          To reference guide
+
+   .. grid-item-card::
+
+      For developers
+      ^^^^^^^^^^^^^^
+
+      The reference guide contains a detailed description of the **SarcGraph**
+      API.
+
+      +++
+
+      .. button-ref:: dev_ref
+         :expand:
+         :color: secondary
+         :click-parent:
+
+         To develper's guide
 
