@@ -4,6 +4,8 @@
 
 [![flake8](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml) [![codecov](https://codecov.io/gh/Sarc-Graph/sarcgraph/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/sarcgraph) [![Documentation Status](https://readthedocs.org/projects/sarc-graph/badge/?version=latest)](https://sarc-graph.readthedocs.io/en/latest/?badge=latest)
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Sarc-Graph/sarcgraph/main)
+
 ## **Table of Contents**
 * [Project Summary](#summary)
 * [Installation Instructions](#install)

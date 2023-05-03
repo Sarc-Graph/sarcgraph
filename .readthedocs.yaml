@@ -19,7 +19,10 @@ sphinx:
 formats:
   - htmlzip
 
+conda:
+  environment: environment.yml
+
 # Optionally declare the Python requirements required to build your docs
-python:
-   install:
-   - requirements: doc_requirements.txt
+# python:
+#    install:
+#      - requirements: doc_requirements.txt
