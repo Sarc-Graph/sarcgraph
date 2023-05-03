@@ -53,7 +53,7 @@ containing the sarcgraph package and all its dependencies:
 
 .. code-block:: bash
 
-    $ conda create --name sarcgraph-env -c conda-forge -c saeedmhz sarcgraph
+    conda create --name sarcgraph-env -c conda-forge -c saeedmhz sarcgraph
 
 Type ``y`` and press ``Enter`` when prompted. 
 
@@ -61,7 +61,7 @@ Type ``y`` and press ``Enter`` when prompted.
 
 .. code-block:: bash
 
-    $ conda activate sarcgraph-env
+    conda activate sarcgraph-env
 
 **From PyPI**
 *************
@@ -77,17 +77,17 @@ and activate a new environment:
 
 .. code-block:: bash
 
-    $ conda create --name sarcgraph-env python=3.10
+    conda create --name sarcgraph-env python=3.10
 
 .. code-block:: bash
 
-    $ conda activate sarcgraph-env
+    conda activate sarcgraph-env
 
 Run the following command to install ffmpeg:
 
 .. code-block:: bash
 
-    $ conda install -c conda-forge ffmpeg=4.2.2
+    conda install -c conda-forge ffmpeg=4.2.2
 
 **2. Install SarcGraph**
 
@@ -95,7 +95,7 @@ SarcGraph and its dependencies can be installed using the following command:
 
 .. code-block:: bash
 
-    $ pip install --upgrade sarcgraph
+    pip install --upgrade sarcgraph
 
 **Verify Installation**
 ***********************
@@ -104,36 +104,74 @@ Run the following command and check if it runs with no errors:
 
 .. code-block:: bash
 
-    $ python -c "from sarcgraph.sg import SarcGraph"
+    python -c "from sarcgraph.sg import SarcGraph"
+
 
 **Run Tutorial Notebooks**
 --------------------------
 
-To open and run tutorial demos in the 
+You have two options for running the tutorial demos in the 
 `tutorials <https://github.com/Sarc-Graph/sarcgraph/tree/main/tutorials>`_ 
-directory you may use 
-`Jupyter <https://docs.jupyter.org/en/latest/index.html>`_ by following these 
-steps:
+directory:
 
-1. Install the ``Jupyter`` package:
+1. **Use Binder:**
 
-.. code-block:: bash
+You can run the tutorials directly in your browser using 
+`Binder <https://mybinder.org/>`_. This option does not require you to set up 
+the environment locally, but it may take some time for Binder to finish the 
+initial setup. Click the badge below to launch the tutorials on Binder:
 
-    $ conda activate sarcgraph
-    $ pip install jupyter
+.. image:: https://mybinder.org/badge_logo.svg
+   :target: https://mybinder.org/v2/gh/Sarc-Graph/sarcgraph/main?filepath=tutorials
 
-2. Download the 
-`SarcGraph repository <https://github.com/Sarc-Graph/sarcgraph>`_ and go to the 
-``sarcgraph/tutorials/`` directory:
+2. **Run Locally:**
 
-.. code-block:: bash
+If you prefer to run the tutorials on your local machine, follow these steps:
 
-    $ git clone https://github.com/Sarc-Graph/sarcgraph
-    $ cd sarcgraph/tutorials
+   a. Set up your local environment by activating the ``sarcgraph-env`` conda 
+   environment:
 
-3. You can open any of the demos by running the following command while in the 
-``sarcgraph/tutorials/`` directory.:
+      .. code-block:: bash
 
-.. code-block:: bash
+         conda activate sarcgraph-env
 
-    $ jupyter notebook demo_file_name.ipynb
+   b. Install the ``Jupyter`` package:
+
+      .. code-block:: bash
+
+         pip install jupyter
+
+   c. Download the tutorial files by either:
+
+      - Downloading the individual notebook files from the 
+        `tutorials folder <https://github.com/Sarc-Graph/sarcgraph/tree/main/tutorials>`_
+        in the GitHub repository. You can do this by clicking on each file, then
+        clicking the "Raw" button, and finally right-clicking and selecting 
+        "Save As" to save the file to your local machine. Make sure to save the
+        file with the ``.ipynb`` extension. 
+
+        Once you have downloaded the tutorial files, move them to a local 
+        directory. You can use the following command to move to that directory:
+
+        .. code-block:: bash
+
+           cd path/to/local/directory
+
+      - Cloning the entire GitHub repository using the following command:
+
+        .. code-block:: bash
+
+           git clone https://github.com/Sarc-Graph/sarcgraph
+
+        Once you have cloned the repository, move to the tutorials directory:
+
+        .. code-block:: bash
+
+           cd sarcgraph/tutorials
+
+   d. You can open and run any of the demos by executing the following command 
+   while in the directory where the tutorial files are located:
+
+      .. code-block:: bash
+
+         jupyter notebook demo_file_name.ipynb

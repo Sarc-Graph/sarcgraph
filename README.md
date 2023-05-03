@@ -36,20 +36,20 @@ research community.
 
 ### **Get a copy of the [SarcGraph repository](https://github.com/Sarc-Graph/sarcgraph) on your local machine**
 
-You can do this by clicking the green ``<> code`` button and selecting ``Download Zip`` or by running the following command in terminal:
+You can do this by clicking the green ``<> code`` button and selecting ``Download Zip`` or by running the following command in terminal and move to the directory of the ``sarcgraph`` repository.:
 
 ```bash
 git clone https://github.com/Sarc-Graph/sarcgraph.git
+cd sarcgraph
 ```
 
 ### **Create and activate a conda virtual environment**
 
 1. Install [Anaconda](https://docs.anaconda.com/anaconda/install/) on your local machine.
 
-2. Open a terminal and move to the directory of the ``sarcgraph`` repository. Then, type the following command in terminal to create a virtual envirnoment and install the required packages:
+2. Type the following command in terminal to create a virtual envirnoment and install the required packages:
 
 ```bash
-cd sarcgraph
 conda env create --file=environment.yml
 ```
 
@@ -61,10 +61,10 @@ conda activate sarcgraph
 
 ### **Install SarcGraph**
 
-SarcGraph can be installed using ``pip``:
+Install SarcGraph in editable mode:
 
 ```bash
-pip install sarcgraph
+pip install -e .
 ```
 
 ## **Contents** <a name="contents"></a>
