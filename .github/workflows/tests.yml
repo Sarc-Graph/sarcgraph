@@ -27,7 +27,7 @@ jobs:
       with:
         activate-environment: test-env
         environment-file: environment.yml
-        python-version: 3.10.9
+        python-version: 3.10
         auto-activate-base: false
 
     - name: Test with pytest
