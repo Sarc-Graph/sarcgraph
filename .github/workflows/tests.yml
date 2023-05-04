@@ -5,10 +5,12 @@ on:
       - main
     paths:
       - '**.py'
+      - '**.yml'
+      - '**.yaml'
   pull_request:
     branches:
       - main
-    path:
+    paths:
       - '**.py'
 
 jobs:
