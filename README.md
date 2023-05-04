@@ -36,21 +36,27 @@ research community.
 
 ### **Stable Version** <a name="install-stable"></a>
 
-1. Follow the instructions to install [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+#### From Conda
 
-2. Create a new Conda envirnoment and install sarcgraph.
+Follow the instructions to install [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+Create a new Conda envirnoment and install sarcgraph.
 
 ```bash
 conda create --name sarcgraph-env -c conda-forge -c saeedmhz sarcgraph
 ```
 
-**Type ``y`` and press ``Enter`` when prompted.
+**Note:** Type ``y`` and press ``Enter`` when prompted.
 
-3. Activate the environment.
+Activate the environment.
 
 ```bash
 conda activate sarcgraph-env
 ```
+#### From PyPI
+
+Please check the [Getting Started](https://sarc-graph.readthedocs.io/en/latest/installation.html) section in the documentation.
+
 ### **Developer's Version** <a name="install-dev"></a>
 
 #### **Get a copy of the [SarcGraph repository](https://github.com/Sarc-Graph/sarcgraph) on your local machine**
