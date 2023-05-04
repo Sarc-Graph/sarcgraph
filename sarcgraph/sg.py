@@ -227,7 +227,7 @@ class SarcGraph:
         Returns
         -------
         List[np.ndarray]
-        
+
         .. warning::
             Here we use the ``skimage.measure.find_contours`` function to find
             contours. This function returns contours with coordinates in
