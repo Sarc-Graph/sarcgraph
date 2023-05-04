@@ -34,7 +34,26 @@ research community.
 
 ## **Installation Instructions** <a name="install"></a>
 
-### **Get a copy of the [SarcGraph repository](https://github.com/Sarc-Graph/sarcgraph) on your local machine**
+### **Stable Version** <a name="install-stable"></a>
+
+1. Follow the instructions to install [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+2. Create a new Conda envirnoment and install sarcgraph.
+
+```bash
+conda create --name sarcgraph-env -c conda-forge -c saeedmhz sarcgraph
+```
+
+**Type ``y`` and press ``Enter`` when prompted.
+
+3. Activate the environment.
+
+```bash
+conda activate sarcgraph-env
+```
+### **Developer's Version** <a name="install-dev"></a>
+
+#### **Get a copy of the [SarcGraph repository](https://github.com/Sarc-Graph/sarcgraph) on your local machine**
 
 You can do this by clicking the green ``<> code`` button and selecting ``Download Zip`` or by running the following command in terminal and move to the directory of the ``sarcgraph`` repository.:
 
@@ -43,7 +62,7 @@ git clone https://github.com/Sarc-Graph/sarcgraph.git
 cd sarcgraph
 ```
 
-### **Create and activate a conda virtual environment**
+#### **Create and activate a conda virtual environment**
 
 1. Install [Anaconda](https://docs.anaconda.com/anaconda/install/) on your local machine.
 
@@ -59,7 +78,7 @@ conda env create --file=environment.yml
 conda activate sarcgraph
 ```
 
-### **Install SarcGraph**
+#### **Install SarcGraph**
 
 Install SarcGraph in editable mode:
 
