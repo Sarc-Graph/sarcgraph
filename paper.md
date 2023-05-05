@@ -90,7 +90,7 @@ To prune this spatial graph such that only accurately detected sarcomeres remain
 
 In this Appendix, we present the code snippets used to generate the figures in the main text. It should be noted that some minor aesthetic adjustments have been made to the figures after their initial generation using these snippets in order to enhance their visual clarity and presentation quality within the paper (e.g., moving legends or changing titles).
 
-<pre>
+
 **Snippet 1:** Python code snippet to generate the panels in \autoref{fig:sample}
 
 ```python
@@ -105,9 +105,7 @@ _ = sg_tools.time_series.sarcomeres_gpr()
 
 sg_tools.visualization.zdiscs_and_sarcs(frame_num=0)
 ```
-</pre>
 
-<pre>
 **Snippet 2:** Python code snippet to generate the panels in \autoref{fig:features}
 
 ```python
@@ -126,9 +124,7 @@ sg_tools.visualization.normalized_sarcs_length()
 sg_tools.visualization.F()
 sg_tools.visualization.J()
 ```
-</pre>
 
-<pre>
 **Snippet 3:** Python code snippet to generate the panels in \autoref{fig:validation}
 
 ```python
@@ -175,6 +171,5 @@ axs[1].plot(lambdas_gt[1, :], ":", color="#182160", label=r"$\lambda_2$ - ground
 axs[1].plot(lambdas[1, :], "--", color="#182160", label=r"$\lambda_2$ - tracked")
 axs[1].legend()
 ```
-</pre>
 
 # References
