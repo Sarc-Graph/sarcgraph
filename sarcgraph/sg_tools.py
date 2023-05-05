@@ -8,6 +8,7 @@ import shutil
 import json
 import os
 
+from matplotlib.lines import Line2D
 from scipy import signal
 from scipy.signal import find_peaks
 from scipy.linalg import polar
@@ -221,14 +222,30 @@ class SarcGraphTools:
             ax.set_aspect("equal")
             ax.imshow(raw_frame[:, :, 0], cmap=plt.cm.gray)
             ax.set_title(
-                f"{len(contours)} z-disks and {len(sarcs_x)} sarcomeres\n"
-                f"found in frame {frame_num}"
+                f"{len(contours)} z-disks and {len(sarcs_x)} sarcomeres "
+                f"in frame {frame_num+1}"
             )
             for contour in contours:
                 ax.plot(contour[:, 1], contour[:, 0], "#0000cc", linewidth=1)
             ax.plot(sarcs_y, sarcs_x, "*", color="#cc0000", markersize=3)
             ax.set_xticks([])
             ax.set_yticks([])
+
+            # Create legend
+            legend_elements = [
+                Line2D([0], [0], color="#0000cc", lw=4, label="Z-disc"),
+                Line2D(
+                    [0],
+                    [0],
+                    marker="*",
+                    color="#cc0000",
+                    markersize=8,
+                    linestyle="None",
+                    label="Sarcomere",
+                ),
+            ]
+
+            ax.legend(handles=legend_elements)
 
             output_file = (
                 f"{self.sg_tools.output_dir}/zdiscs-sarcs-frame-{frame_num}"
@@ -241,6 +258,8 @@ class SarcGraphTools:
 
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
+
+            plt.show()
 
         def contraction(self):
             """Visualize all detected sarcomeres in every frame according to
@@ -307,21 +326,28 @@ class SarcGraphTools:
             sarcs_length_norm_median = groupby_frame.length_norm.median()
             sarcs_length_norm_mean = groupby_frame.length_norm.mean()
 
+            _, ax = plt.subplots(figsize=(5, 5))
+            ax.grid("on")
             for sarc_id in range(num_sarcs):
                 indices = sarc_ids == sarc_id
-                plt.plot(sarcs_length_norm[indices], linewidth=0.25)
-            plt.plot(
-                sarcs_length_norm_median,
-                "k-",
-                linewidth=3,
-                label="median curve",
-            )
+                plt.plot(
+                    sarcs_length_norm[indices],
+                    linewidth=0.25,
+                    color=(0.545, 0.106, 0.086),
+                    alpha=0.1,
+                )
             plt.plot(
                 sarcs_length_norm_mean,
+                "k-",
+                linewidth=2,
+                label="mean curve",
+            )
+            plt.plot(
+                sarcs_length_norm_median,
                 "--",
                 color=(0.5, 0.5, 0.5),
-                linewidth=3,
-                label="mean curve",
+                linewidth=2,
+                label="median curve",
             )
             plt.xlabel("frame")
             plt.ylabel("normalized length")
@@ -343,6 +369,8 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
+            plt.show()
+
         def OOP(self):
             """Plot recovered Orientational Order Parameter."""
             OOP = self.sg_tools._load_recovered_info("OOP")
@@ -363,19 +391,44 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
+            plt.show()
+
         def F(self):
             """Plot recovered deformation gradient."""
             F = self.sg_tools._load_recovered_info("F")
 
-            plt.figure(figsize=(5, 5))
-            plt.subplot(1, 1, 1)
-            plt.plot(F[:, 0, 0] - 1, "r--", linewidth=5, label="F11 recovered")
-            plt.plot(F[:, 1, 1] - 1, "g--", linewidth=4, label="F22 recovered")
-            plt.plot(F[:, 0, 1], "c:", label="F12 recovered")
-            plt.plot(F[:, 1, 0], "b:", label="F21 recovered")
+            _, ax = plt.subplots(figsize=(5, 5))
+            ax.grid("on")
+            plt.plot(
+                F[:, 0, 0] - 1,
+                "--",
+                color=(0.078, 0.118, 0.594),
+                linewidth=5,
+                label="F11 recovered",
+            )
+            plt.plot(
+                F[:, 1, 1] - 1,
+                "--",
+                color=(0.545, 0.106, 0.086),
+                linewidth=4,
+                label="F22 recovered",
+            )
+            plt.plot(
+                F[:, 0, 1],
+                ":",
+                color=(0.078, 0.118, 0.594),
+                label="F12 recovered",
+            )
+            plt.plot(
+                F[:, 1, 0],
+                ":",
+                color=(0.545, 0.106, 0.086),
+                label="F21 recovered",
+            )
             plt.legend()
             plt.title("recovered deformation gradient")
             plt.xlabel("frames")
+            plt.ylabel("value")
             output_file = f"{self.sg_tools.output_dir}/recovered_F"
             plt.savefig(
                 f"{output_file}.png",
@@ -384,6 +437,8 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
+
+            plt.show()
 
         def J(self):
             """Plot recovered deformation jacobian."""
@@ -447,13 +502,12 @@ class SarcGraphTools:
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps", bbox_inches="tight")
 
-        def F_eigenval_animation(self):
+            plt.show()
+
+        def F_eigenval_animation(self, no_anim=False):
             """Visualize the eigenvalues of F over all frames"""
-            raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
             F_all = self.sg_tools._load_recovered_info("F")
             J_all = self.sg_tools._load_recovered_info("J")
-            OOP_all = self.sg_tools._load_recovered_info("OOP")
-            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
 
             num_frames = len(J_all)
             frames = np.arange(num_frames)
@@ -474,6 +528,19 @@ class SarcGraphTools:
                 v = R.dot(v)
                 vec_1[frame_num] = v[:, np.argmin(w)]
                 vec_2[frame_num] = v[:, np.argmax(w)]
+
+            if no_anim:
+                return np.array([lambda_1, lambda_2])
+
+            raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
+            OOP_all = self.sg_tools._load_recovered_info("OOP")
+            OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
+
+            if self.sg_tools.save_results:
+                with open(
+                    f"{self.sg_tools.output_dir}/recovered_lambda.npy", "wb"
+                ) as file:
+                    np.save(file, np.array([lambda_1, lambda_2]))
 
             img_list = []
             Path("tmp").mkdir(parents=True, exist_ok=True)
@@ -583,11 +650,6 @@ class SarcGraphTools:
                 img_list.append(imageio.imread(f"tmp/frame-{frame_num}.png"))
             shutil.rmtree("tmp")
 
-            if self.sg_tools.save_results:
-                with open(
-                    f"{self.sg_tools.output_dir}/recovered_lambda.npy", "wb"
-                ) as file:
-                    np.save(file, np.array([lambda_1, lambda_2]))
             if num_frames > 1:
                 imageio.mimsave(
                     f"{self.sg_tools.output_dir}/F_anim.gif", img_list
@@ -639,6 +701,8 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"{out_file}.eps")
+
+            plt.show()
 
         def dendrogram(self, dist_func: str = "dtw"):
             """Cluster timeseries and plot a dendrogram that shows clusters.
@@ -703,6 +767,8 @@ class SarcGraphTools:
 
             output_file = f"{self.sg_tools.output_dir}/dendrogram_{dist_func}"
             plt.savefig(f"{output_file}.pdf")
+
+            plt.show()
 
         def spatial_graph(self):
             """Visualizes the spatial graph
@@ -814,6 +880,8 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"./{output_file}.eps")
+
+            plt.show()
 
         def tracked_vs_untracked(
             self,
@@ -1013,6 +1081,8 @@ class SarcGraphTools:
             )
             if self.sg_tools.include_eps:
                 plt.savefig(f"{output_file}.eps")
+
+            plt.show()
 
     ##########################################################
     #                     Analysis Class                     #
