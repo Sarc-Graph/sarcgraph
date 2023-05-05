@@ -93,6 +93,7 @@ In this Appendix, we present the code snippets used to generate the figures in t
 
 **Snippet 1:** Python code snippet to generate the panels in \autoref{fig:sample}
 
+<div style="background-color: #f8f8f8; border: 1px solid #ccc; border-radius: 4px; padding: 10px;">
 ```python
 from sarcgraph.sg import SarcGraph
 from sarcgraph.sg_tools import SarcGraphTools
@@ -100,11 +101,12 @@ from sarcgraph.sg_tools import SarcGraphTools
 sg = SarcGraph("results", "video")
 sg_tools = SarcGraphTools("results")
 
-_, _ = sg.sarcomere_detection("sample_file") # "samples/sample_2.avi" and "samples/sample_3.avi"
+_, _ = sg.sarcomere_detection("sample_file") # "samples/sample_2.avi"
 _ = sg_tools.time_series.sarcomeres_gpr()
 
 sg_tools.visualization.zdiscs_and_sarcs(frame_num=0)
 ```
+</div>
 
 **Snippet 2:** Python code snippet to generate the panels in \autoref{fig:features}
 
@@ -124,6 +126,7 @@ sg_tools.visualization.normalized_sarcs_length()
 sg_tools.visualization.F()
 sg_tools.visualization.J()
 ```
+
 
 **Snippet 3:** Python code snippet to generate the panels in \autoref{fig:validation}
 
@@ -152,23 +155,43 @@ sg_tools.visualization.zdiscs_and_sarcs(frame_num=0)
 
 fig, axs = plt.subplots(1, 2, figsize=(10, 5))
 fig.subplots_adjust(wspace=0.3)
-axs[0].grid('on')
+axs[0].grid("on")
 axs[0].set_ylim(-0.1, 0.1)
-axs[0].set_xlabel('frame')
-axs[0].set_ylabel('value')
-for _, data in sarcs.groupby('sarc_id')["length_norm"]:
-    axs[0].plot(data.to_numpy(), linewidth=0.25, color="#942d28", alpha=0.25,)
-axs[0].plot(sarcs.groupby('frame').length_norm.mean(), color="#942d28", label="mean tracked")
-axs[0].plot(sarcs_gt.groupby('frame').length_norm.mean(), "--", color="#999a9d", label="mean ground truth")
+axs[0].set_xlabel("frame")
+axs[0].set_ylabel("value")
+for _, data in sarcs.groupby("sarc_id")["length_norm"]:
+    axs[0].plot(
+        data.to_numpy(),
+        linewidth=0.25,
+        color="#942d28",
+        alpha=0.25,
+    )
+axs[0].plot(
+    sarcs.groupby("frame").length_norm.mean(),
+    color="#942d28",
+    label="mean tracked",
+)
+axs[0].plot(
+    sarcs_gt.groupby("frame").length_norm.mean(),
+    "--",
+    color="#999a9d",
+    label="mean ground truth",
+)
 axs[0].legend()
 
-axs[1].grid('on')
-axs[1].set_xlabel('frame')
-axs[1].set_ylabel('value')
-axs[1].plot(lambdas_gt[0, :], color="#a39d9e", label=r"$\lambda_1$ - ground truth")
+axs[1].grid("on")
+axs[1].set_xlabel("frame")
+axs[1].set_ylabel("value")
+axs[1].plot(
+    lambdas_gt[0, :], color="#a39d9e", label=r"$\lambda_1$ - ground truth"
+)
 axs[1].plot(lambdas[0, :], color="#831915", label=r"$\lambda_1$ - tracked")
-axs[1].plot(lambdas_gt[1, :], ":", color="#182160", label=r"$\lambda_2$ - ground truth")
-axs[1].plot(lambdas[1, :], "--", color="#182160", label=r"$\lambda_2$ - tracked")
+axs[1].plot(
+    lambdas_gt[1, :], ":", color="#182160", label=r"$\lambda_2$ - ground truth"
+)
+axs[1].plot(
+    lambdas[1, :], "--", color="#182160", label=r"$\lambda_2$ - tracked"
+)
 axs[1].legend()
 ```
 
