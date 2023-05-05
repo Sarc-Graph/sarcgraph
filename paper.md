@@ -90,10 +90,10 @@ To prune this spatial graph such that only accurately detected sarcomeres remain
 
 In this Appendix, we present the code snippets used to generate the figures in the main text. It should be noted that some minor aesthetic adjustments have been made to the figures after their initial generation using these snippets in order to enhance their visual clarity and presentation quality within the paper (e.g., moving legends or changing titles).
 
-
+&nbsp;
+<br>
 **Snippet 1:** Python code snippet to generate the panels in \autoref{fig:sample}
 
-<div style="background-color: #f8f8f8; border: 1px solid #ccc; border-radius: 4px; padding: 10px;">
 ```python
 from sarcgraph.sg import SarcGraph
 from sarcgraph.sg_tools import SarcGraphTools
@@ -101,13 +101,15 @@ from sarcgraph.sg_tools import SarcGraphTools
 sg = SarcGraph("results", "video")
 sg_tools = SarcGraphTools("results")
 
-_, _ = sg.sarcomere_detection("sample_file") # "samples/sample_2.avi"
+# sample_file = "samples/sample_2.avi" or "samples/sample_3.avi"
+_, _ = sg.sarcomere_detection("sample_file")
 _ = sg_tools.time_series.sarcomeres_gpr()
 
 sg_tools.visualization.zdiscs_and_sarcs(frame_num=0)
 ```
-</div>
 
+&nbsp;
+<br>
 **Snippet 2:** Python code snippet to generate the panels in \autoref{fig:features}
 
 ```python
@@ -117,7 +119,8 @@ from sarcgraph.sg_tools import SarcGraphTools
 sg = SarcGraph("results", "video")
 sg_tools = SarcGraphTools("results")
 
-_, _ = sg.sarcomere_detection("sample_file") # "samples/sample_2.avi"
+# sample_file = "samples/sample_2.avi"
+_, _ = sg.sarcomere_detection("sample_file")
 _ = sg_tools.time_series.sarcomeres_gpr()
 sg_tools._run_all("sample_file")
 
@@ -127,7 +130,8 @@ sg_tools.visualization.F()
 sg_tools.visualization.J()
 ```
 
-
+&nbsp;
+<br>
 **Snippet 3:** Python code snippet to generate the panels in \autoref{fig:validation}
 
 ```python
@@ -136,7 +140,6 @@ import matplotlib.pyplot as plt
 
 from sarcgraph.sg import SarcGraph
 from sarcgraph.sg_tools import SarcGraphTools
-
 
 sg = SarcGraph("results", "video")
 sg_tools = SarcGraphTools("results")
