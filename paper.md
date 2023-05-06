@@ -91,8 +91,9 @@ To prune this spatial graph such that only accurately detected sarcomeres remain
 In this Appendix, we present the code snippets used to generate the figures in the main text. It should be noted that some minor aesthetic adjustments have been made to the figures after their initial generation using these snippets in order to enhance their visual clarity and presentation quality within the paper (e.g., moving legends or changing titles).
 
 
-![](figures/snippet1.png){width=95%}
+![](figures/snippet1.png){width=100%}
 
+![](figures/snippet1.eps)
 
 **Snippet 2:** Python code snippet to generate the panels in \autoref{fig:features}
 
