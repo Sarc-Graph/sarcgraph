@@ -91,21 +91,7 @@ To prune this spatial graph such that only accurately detected sarcomeres remain
 In this Appendix, we present the code snippets used to generate the figures in the main text. It should be noted that some minor aesthetic adjustments have been made to the figures after their initial generation using these snippets in order to enhance their visual clarity and presentation quality within the paper (e.g., moving legends or changing titles).
 
 
-**Snippet 1:** Python code snippet to generate the panels in \autoref{fig:sample}
-
-```python
-from sarcgraph.sg import SarcGraph
-from sarcgraph.sg_tools import SarcGraphTools
-
-sg = SarcGraph("results", "video")
-sg_tools = SarcGraphTools("results")
-
-# sample_file = "samples/sample_2.avi" or "samples/sample_3.avi"
-_, _ = sg.sarcomere_detection("sample_file")
-_ = sg_tools.time_series.sarcomeres_gpr()
-
-sg_tools.visualization.zdiscs_and_sarcs(frame_num=0)
-```
+![](figures/snippet1.png){width=95%}
 
 
 **Snippet 2:** Python code snippet to generate the panels in \autoref{fig:features}
