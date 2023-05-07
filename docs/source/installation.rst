@@ -141,6 +141,11 @@ If you prefer to run the tutorials on your local machine, follow these steps:
 
          pip install jupyter
 
+      If you're new to Jupyter Notebooks, you may find these introductory videos helpful:
+
+      - `Jupyter Notebook Tutorial: Introduction, Setup, and Walkthrough <https://www.youtube.com/watch?v=HW29067qVWk>`_
+      - `Jupyter Notebook Complete Beginner Guide 2023 <https://www.youtube.com/watch?v=5pf0_bpNbkw>`_
+
    c. Download the tutorial files by either:
 
       - Downloading the individual notebook files from the 
