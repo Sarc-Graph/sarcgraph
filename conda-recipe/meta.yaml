@@ -1,0 +1,54 @@
+package:
+    name: sarcgraph
+    version: 0.2.0
+
+source:
+    path: ../
+
+build:
+    noarch: python
+    number: 0
+    script: python -m pip install . --no-deps -vv
+
+requirements:
+    host:
+        - python=3.10
+        - setuptools
+        - pip
+    run:
+        - python=3.10
+        - ffmpeg=4.2.2
+        - matplotlib=3.5.2
+        - networkx=2.8.4
+        - numpy=1.23.5
+        - pandas=1.5.2
+        - scikit-image=0.19.3
+        - scikit-learn=1.2.1
+        - scipy=1.10.0
+        - sk-video=1.1.10
+        - trackpy=0.6.1
+
+test:
+    imports:
+        - sarcgraph
+    commands:
+        - python -c "import matplotlib; assert matplotlib.__version__ == '3.5.2'"
+        - python -c "import networkx; assert networkx.__version__ == '2.8.4'"
+        - python -c "import numpy; assert numpy.__version__ == '1.23.5'"
+        - python -c "import pandas; assert pandas.__version__ == '1.5.2'"
+        - python -c "import skimage; assert skimage.__version__ == '0.19.3'"
+        - python -c "import sklearn; assert sklearn.__version__ == '1.2.1'"
+        - python -c "import scipy; assert scipy.__version__ == '1.10.0'"
+        - python -c "import skvideo; assert skvideo.__version__ == '1.1.10'"
+        - python -c "import trackpy; assert trackpy.__version__ == '0.6.1'"
+
+about:
+    home: https://github.com/Sarc-Graph/sarcgraph/
+    doc_url: https://sarc-graph.readthedocs.io/en/latest/index.html
+    license: MIT
+    license_file: LICENSE
+    summary: 'A software for zdisc and sarcomere detection, tracking, and analysis in movies of hiPSC-CMs.'
+
+extra:
+    recipe-maintainers:
+        - saeedmhz
