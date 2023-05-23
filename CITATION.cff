@@ -1,0 +1,38 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Mohammadzadeh
+  given-names: Saeed
+  orcid: "https://orcid.org/0000-0001-9879-044X"
+- family-names: Lejeune
+  given-names: Emma
+  orcid: "https://orcid.org/0000-0001-8099-3468"
+contact:
+- family-names: Lejeune
+  given-names: Emma
+  orcid: "https://orcid.org/0000-0001-8099-3468"
+doi: 10.5281/zenodo.7963553
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Mohammadzadeh
+    given-names: Saeed
+    orcid: "https://orcid.org/0000-0001-9879-044X"
+  - family-names: Lejeune
+    given-names: Emma
+    orcid: "https://orcid.org/0000-0001-8099-3468"
+  date-published: 2023-05-23
+  doi: 10.21105/joss.05322
+  issn: 2475-9066
+  issue: 85
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 5322
+  title: "SarcGraph: A Python package for analyzing the contractile
+    behavior of pluripotent stem cell-derived cardiomyocytes"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.05322"
+  volume: 8
+title: "SarcGraph: A Python package for analyzing the contractile
+  behavior of pluripotent stem cell-derived cardiomyocytes"
