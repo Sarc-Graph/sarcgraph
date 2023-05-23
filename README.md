@@ -5,7 +5,7 @@
 [![flake8](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml/badge.svg)](https://github.com/Sarc-Graph/sarcgraph/actions/workflows/black_flake8.yml) [![codecov](https://codecov.io/gh/Sarc-Graph/sarcgraph/branch/main/graph/badge.svg?token=XNE85EJ4GX)](https://codecov.io/gh/Sarc-Graph/sarcgraph) [![Documentation Status](https://readthedocs.org/projects/sarc-graph/badge/?version=latest)](https://sarc-graph.readthedocs.io/en/latest/?badge=latest)
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Sarc-Graph/sarcgraph/main)
-[![DOI](https://zenodo.org/badge/525514948.svg)](https://zenodo.org/badge/latestdoi/525514948)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7963553.svg)](https://doi.org/10.5281/zenodo.7963553)
 
 ## **Table of Contents**
 * [Project Summary](#summary)
