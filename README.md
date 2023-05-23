@@ -6,6 +6,7 @@
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Sarc-Graph/sarcgraph/main)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7963553.svg)](https://doi.org/10.5281/zenodo.7963553)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.05322/status.svg)](https://doi.org/10.21105/joss.05322)
 
 ## **Table of Contents**
 * [Project Summary](#summary)
