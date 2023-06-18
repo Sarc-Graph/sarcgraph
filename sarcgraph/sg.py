@@ -957,7 +957,7 @@ class SarcGraph:
                 + (sarc.p1_y_p2 - sarc.p2_y_p2) ** 2
             )
             sarc["width"] = (width1 + width2) / 2
-            angle = np.arctan2(sarc.y_p2 - sarc.y_p1, sarc.x_p2 - sarc.x_p1)
+            angle = np.arctan2(sarc.x_p2 - sarc.x_p1, sarc.y_p2 - sarc.y_p1)
             angle[angle < 0] += np.pi
             sarc["angle"] = angle
             sarcs.append(
