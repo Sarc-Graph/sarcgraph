@@ -27,18 +27,16 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
     ],
+    install_requires=[
+        "matplotlib==3.5.2",
+        "networkx==2.8.4",
+        "numpy==1.23.5",
+        "pandas==1.5.2",
+        "scikit-image==0.19.3",
+        "scikit-learn==1.2.1",
+        "scipy==1.10.0",
+        "sk-video==1.1.10",
+        "trackpy==0.6.1",
+    ],
     zip_safe=False,
 )
-
-
-# install_requires=[
-#     "matplotlib==3.5.2",
-#     "networkx==2.8.4",
-#     "numpy==1.23.5",
-#     "pandas==1.5.2",
-#     "scikit-image==0.19.3",
-#     "scikit-learn==1.2.1",
-#     "scipy==1.10.0",
-#     "sk-video==1.1.10",
-#     "trackpy==0.6.1",
-# ],
