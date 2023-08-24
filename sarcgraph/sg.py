@@ -212,6 +212,7 @@ class SarcGraph:
         self,
         filtered_frames: np.ndarray,
         min_length: int = 8,
+        max_length: int = 100,
         save_output: bool = True,
     ) -> List[np.ndarray]:
         """Returns contours of detected zdiscs in each frame.
@@ -221,6 +222,8 @@ class SarcGraph:
         filtered_frames : np.ndarray, shape=(frames, dim_1, dim_2)
         min_length : int
             Zdisc contours shorter than ``min_length`` pixels will be ignored.
+        max_legth : int
+            Zdisc contours longer than ``max_length`` pixels will be ignored.
         save_output : bool
             by default True
 
@@ -255,9 +258,8 @@ class SarcGraph:
                 measure.find_contours(frame, contour_thresh), dtype="object"
             )
             contours_size = list(length_checker(contours))
-            valid_contours.append(
-                contours[np.greater_equal(contours_size, min_length)]
-            )
+            mask = [min_length <= x <= max_length for x in contours_size]
+            valid_contours.append(contours[mask])
         valid_contours = np.array(valid_contours, dtype="object")
         if save_output:
             self._save_numpy(valid_contours, file_name="contours")
@@ -345,6 +347,7 @@ class SarcGraph:
         raw_frames: Union[np.ndarray, None] = None,
         sigma: float = 1.0,
         min_length: int = 8,
+        max_length: int = 100,
         save_output: bool = True,
     ) -> pd.DataFrame:
         """Finds Z-Discs in a video/image and extracts related information,
@@ -360,6 +363,8 @@ class SarcGraph:
             Standard deviation for Gaussian kernel
         min_length : int
             Minimum length for zdisc contours measured in pixels
+        max_length : int
+            Maximum length for zdisc contours measured in pixels
         save_output : bool
             by default True
 
@@ -375,7 +380,7 @@ class SarcGraph:
             file_path, raw_frames, sigma, save_output
         )
         contours_all = self._detect_contours(
-            filtered_frames, min_length, save_output
+            filtered_frames, min_length, max_length, save_output
         )
         zdiscs_all = []
         for contours_frame in contours_all:
@@ -495,6 +500,7 @@ class SarcGraph:
         segmented_zdiscs: pd.DataFrame = None,
         sigma: float = 1.0,
         min_length: int = 8,
+        max_length: int = 100,
         tp_depth: float = 4.0,
         full_track_ratio: float = 0.75,
         skip_merging: bool = False,
@@ -520,6 +526,9 @@ class SarcGraph:
         min_length : int
             Minimum length for zdisc contours measured in pixels, by default
             ``8``
+        max_length : int
+            Maximum length for zdisc contours measured in pixels, by default
+            ``100``
         tp_depth : float, optional
             the maximum distance features can move between frames, by default
             ``4.0``
@@ -558,7 +567,7 @@ class SarcGraph:
         """
         if segmented_zdiscs is None:
             segmented_zdiscs = self.zdisc_segmentation(
-                file_path, raw_frames, sigma, min_length, save_output
+                file_path, raw_frames, sigma, min_length, max_length, save_output
             )
 
         if type(segmented_zdiscs) != pd.DataFrame:
@@ -807,6 +816,7 @@ class SarcGraph:
         tracked_zdiscs: pd.DataFrame = None,
         sigma: float = 1.0,
         min_length: int = 8,
+        max_length: int = 100,
         tp_depth: float = 4.0,
         full_track_ratio: float = 0.75,
         skip_merging: bool = False,
@@ -839,6 +849,9 @@ class SarcGraph:
         min_length : int
             Minimum length for zdisc contours measured in pixels, by default
             ``8``
+        max_length : int
+            Maximum length for zdisc contours measured in pixels, by default
+            ``100``
         tp_depth : float, optional
             the maximum distance features can move between frames, by default
             ``4.0``
@@ -906,6 +919,7 @@ class SarcGraph:
                 segmented_zdiscs,
                 sigma,
                 min_length,
+                max_length,
                 tp_depth,
                 full_track_ratio,
                 skip_merging,
