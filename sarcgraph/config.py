@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -12,14 +11,12 @@ class Config:
     :ivar input_type: Type of the input data, either "image" or "video".
     Defaults to "video".
     :type input_type: str
-    :ivar input_file: Path to the input file. Defaults to None.
-    :type input_file: Optional[str]
     :ivar save_output: Flag to determine whether to save the output file.
     Defaults to True.
     :type save_output: bool
-    :ivar gaussian_sigma: Standard deviation for Gaussian filter. Defaults to
+    :ivar sigma: Standard deviation for Gaussian filter. Defaults to
     1.0.
-    :type gaussian_sigma: float
+    :type sigma: float
     :ivar zdisc_min_length: Minimum length for Z-disc contours. Defaults to 15.
     :type zdisc_min_length: int
     :ivar zdisc_max_length: Maximum length for Z-disc contours. Defaults to 50.
@@ -56,11 +53,11 @@ class Config:
     Defaults to 1.2.
     :type angle_threshold: float
     """
+
     _output_dir: str = field(default="output", init=False)
     _input_type: str = field(default="video", init=False)
-    _input_file: Optional[str] = field(default=None, init=False)
     _save_output: bool = field(default=True, init=False)
-    _gaussian_sigma: float = field(default=1.0, init=False)
+    _sigma: float = field(default=1.0, init=False)
     _zdisc_min_length: int = field(default=15, init=False)
     _zdisc_max_length: int = field(default=50, init=False)
     _full_track_ratio: float = field(default=0.75, init=False)
@@ -80,9 +77,8 @@ class Config:
     def __post_init__(self):
         self.output_dir = self._output_dir
         self.input_type = self._input_type
-        self.input_file = self._input_file
         self.save_output = self._save_output
-        self.gaussian_sigma = self._gaussian_sigma
+        self.sigma = self._sigma
         self.zdisc_min_length = self._zdisc_min_length
         self.zdisc_max_length = self._zdisc_max_length
         self.full_track_ratio = self._full_track_ratio
@@ -115,17 +111,11 @@ class Config:
     def input_type(self, value: str):
         if not isinstance(value, str):
             raise TypeError("input_type must be a string")
+        if value not in self.VALID_INPUT_TYPES:
+            raise ValueError(
+                f"input_type must be one of " f"{self.VALID_INPUT_TYPES}"
+            )
         self._input_type = value
-
-    @property
-    def input_file(self) -> Optional[str]:
-        return self._input_file
-
-    @input_file.setter
-    def input_file(self, value: Optional[str]):
-        if value is not None and not isinstance(value, str):
-            raise TypeError("input_file must be a string")
-        self._input_file = value
 
     @property
     def save_output(self) -> bool:
@@ -138,16 +128,16 @@ class Config:
         self._save_output = value
 
     @property
-    def gaussian_sigma(self) -> float:
-        return self._gaussian_sigma
+    def sigma(self) -> float:
+        return self._sigma
 
-    @gaussian_sigma.setter
-    def gaussian_sigma(self, value: float):
+    @sigma.setter
+    def sigma(self, value: float):
         if not isinstance(value, float):
-            raise TypeError("gaussian_sigma must be a float")
+            raise TypeError("sigma must be a float")
         if value <= 0.0:
-            raise ValueError("gaussian_sigma must be greater than 0.0")
-        self._gaussian_sigma = value
+            raise ValueError("sigma must be greater than 0.0")
+        self._sigma = value
 
     @property
     def zdisc_min_length(self) -> int:
@@ -170,8 +160,9 @@ class Config:
         if not isinstance(value, int):
             raise TypeError("zdisc_max_length must be an integer")
         if value <= self.zdisc_min_length:
-            raise ValueError("zdisc_max_length must be greater than "
-                             "zdisc_min_length")
+            raise ValueError(
+                "zdisc_max_length must be greater than " "zdisc_min_length"
+            )
         self._zdisc_max_length = value
 
     @property
@@ -241,8 +232,9 @@ class Config:
         if not isinstance(value, float):
             raise TypeError("max_sarc_length must be a float")
         if value <= self.avg_sarc_length:
-            raise ValueError("max_sarc_length must be greater than "
-                             "avg_sarc_length")
+            raise ValueError(
+                "max_sarc_length must be greater than " "avg_sarc_length"
+            )
         self._max_sarc_length = value
 
     @property
@@ -307,7 +299,6 @@ class Config:
 
     def print(self):
         for attribute in self.__dict__:
-            # Strip the leading underscore and get the property's value using its getter.
-            public_attribute_name = attribute.lstrip('_')
+            public_attribute_name = attribute.lstrip("_")
             value = getattr(self, public_attribute_name)
             print(f"{public_attribute_name} = {value}")
