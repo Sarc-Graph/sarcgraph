@@ -67,6 +67,24 @@ class SarcGraph:
     def _create_output_dir(self):
         Path(self.config.output_dir).mkdir(parents=True, exist_ok=True)
 
+    def _pop_kwargs(self, *args, **kwargs):
+        """Pop keys from kwargs and return the value and the updated kwargs.
+
+        Parameters
+        ----------
+        *args
+            Keys to pop from kwargs.
+        **kwargs
+            Keyword arguments to pop from.
+
+        Returns
+        -------
+        tuple
+            (popped_dict, updated_kwargs)
+        """
+        popped_dict = {key: kwargs.pop(key, None) for key in args}
+        return popped_dict, kwargs
+
     #############################################################
     #                      Data Processing                      #
     #############################################################
@@ -87,13 +105,20 @@ class SarcGraph:
             raise ValueError("The input file_path is not specified.")
 
         if self.config.input_type == "video":
-            data = skvideo.io.vread(file_path)
+            try:
+                data = skvideo.io.vread(file_path)
+                data = np.squeeze(skvideo.utils.rgb2gray(data))
+                self._check_validity(data, self.config.input_type)
+            except ValueError:
+                data = skimage.io.imread(file_path, plugin="tifffile")
+                data = np.squeeze(skvideo.utils.rgb2gray(data))
+                self._check_validity(data, self.config.input_type)
         else:
+            print("Trying to load image")
             data = skimage.io.imread(file_path)
-
-        data = np.squeeze(skvideo.utils.rgb2gray(data))
-
-        self._check_validity(data, self.config.input_type)
+            print("got error!")
+            data = np.squeeze(skvideo.utils.rgb2gray(data))
+            self._check_validity(data, self.config.input_type)
 
         return data
 
@@ -120,6 +145,9 @@ class SarcGraph:
         data : Union[np.ndarray, List, pd.DataFrame]
         file_name: str
         """
+        if data is None:
+            return
+
         if not isinstance(file_name, str):
             raise TypeError("file_name must be a string.")
 
@@ -206,29 +234,37 @@ class SarcGraph:
         pd.DataFrame
             The processed z-disc information after segmentation.
         """
-        self._update_config(**kwargs)
-
         # Extract specific kwargs for input data
-        input_file = kwargs.get("input_file")
-        raw_frames = kwargs.get("raw_frames")
-        filtered_frames = kwargs.get("filtered_frames")
-        # Extract processing functions if provided; defaults to an empty list
-        processing_functions = kwargs.get("processing_functions", [])
+        inputs_dict, kwargs = self._pop_kwargs(
+            "input_file",
+            "raw_frames",
+            "filtered_frames",
+            "processing_functions",
+            **kwargs,
+        )
+        input_file = inputs_dict["input_file"]
+        raw_frames = inputs_dict["raw_frames"]
+        filtered_frames = inputs_dict["filtered_frames"]
+        processing_functions = []
+        if inputs_dict["processing_functions"] is not None:
+            processing_functions = inputs_dict["processing_functions"]
+
+        self._update_config(**kwargs)
 
         # Validate provided processing functions
         if not all(callable(fn) for fn in processing_functions):
             raise ValueError(
-                "All items in 'processing_functions' must be " "callable."
+                "All items in 'processing_functions' must be ", "callable."
             )
 
-        # Validate the output of processing functions
-        mock_contour_input = np.array([[0, 0], [1, 1], [2, 2]])
+        mock_contour_input = np.array(
+            [[0, 1], [1, 0], [2, 1], [2, 2], [1, 3], [0, 2], [0, 1]]
+        )
         for fn in processing_functions:
             test_output = fn(mock_contour_input)
             if not isinstance(test_output, dict):
                 raise ValueError(
-                    f"The function {fn.__name__} did not return a"
-                    " dictionary."
+                    f"The function {fn.__name__} did not return a dictionary."
                 )
 
         # Load data if 'input_file' is provided
@@ -237,7 +273,7 @@ class SarcGraph:
 
         # Generate filtered frames if 'raw_frames' are provided
         if raw_frames is not None:
-            filtered_frames = self.filter_frames(raw_frames, self.config.sigma)
+            filtered_frames = self.filter_frames(raw_frames)
 
         # If no 'filtered_frames' are provided by now, raise an error
         if filtered_frames is None:
@@ -386,7 +422,7 @@ class SarcGraph:
         dict
             A dictionary with keys 'x' and 'y' representing the z-disc centroid
         """
-        center_coords = np.mean(contour, axis=0)
+        center_coords = np.mean(np.unique(contour, axis=0), axis=0)
         return {"x": center_coords[0], "y": center_coords[1]}
 
     def _zdisc_endpoints(self, contour: Union[List, np.ndarray]) -> dict:
@@ -536,56 +572,60 @@ class SarcGraph:
         --------
         :func:`sarcgraph.sg.SarcGraph.zdisc_segmentation`
         """
-        self._update_config(**kwargs)
+        # Extract specific kwargs for input data
+        inputs_dict, kwargs = self._pop_kwargs("segmented_zdiscs", **kwargs)
+        segmented_zdiscs = inputs_dict["segmented_zdiscs"]
 
-        segmented_zdiscs = kwargs.get("segmented_zdiscs")
+        if segmented_zdiscs is None:
+            detected_zdiscs = self.zdisc_segmentation(**kwargs)
+            return self.zdisc_tracking(
+                segmented_zdiscs=detected_zdiscs, **kwargs
+            )
 
         # Validate segmented_zdiscs if provided
-        if segmented_zdiscs is not None:
-            required_columns = {
-                "frame",
-                "x",
-                "y",
-                "p1_x",
-                "p1_y",
-                "p2_x",
-                "p2_y",
-            }
-            if (
-                not isinstance(segmented_zdiscs, pd.DataFrame)
-                or segmented_zdiscs.empty
-                or not required_columns.issubset(segmented_zdiscs.columns)
-            ):
-                raise ValueError(
-                    "Provided 'segmented_zdiscs' DataFrame is not in the "
-                    "correct format. The DataFrame must be non-empty and "
-                    "include the following columns: 'frame', 'x', 'y', 'p1_x',"
-                    " 'p1_y', 'p2_x', 'p2_y'."
-                )
+        required_columns = {
+            "frame",
+            "x",
+            "y",
+            "p1_x",
+            "p1_y",
+            "p2_x",
+            "p2_y",
+        }
+        if (
+            not isinstance(segmented_zdiscs, pd.DataFrame)
+            or segmented_zdiscs.empty
+            or not required_columns.issubset(segmented_zdiscs.columns)
+        ):
+            raise ValueError(
+                "Provided 'segmented_zdiscs' DataFrame is not in the "
+                "correct format. The DataFrame must be non-empty and "
+                "include the following columns: 'frame', 'x', 'y', 'p1_x',"
+                " 'p1_y', 'p2_x', 'p2_y'."
+            )
 
-        # If segmented_zdiscs is valid, process it
-        if segmented_zdiscs is not None:
-            if self.config.input_type == "image":
-                segmented_zdiscs["particle"] = np.arange(len(segmented_zdiscs))
-                tracked_zdiscs = segmented_zdiscs
-            else:
-                num_frames = len(segmented_zdiscs["frame"].unique())
-                t = tp.link_df(
-                    segmented_zdiscs,
-                    search_range=self.config.tp_depth,
-                    memory=num_frames,
-                )
-                tracked_zdiscs = tp.filter_stubs(t, 2).reset_index(drop=True)
-                if not self.config.skip_merge:
-                    tracked_zdiscs = self._merge_tracked_zdiscs(tracked_zdiscs)
-            if self.config.save_output:
-                self.save_data(tracked_zdiscs, "tracked_zdiscs")
+        _, kwargs = self._pop_kwargs(
+            "input_file", "raw_frames", "filtered_frames", **kwargs
+        )
+        self._update_config(**kwargs)
 
-            return tracked_zdiscs
+        if self.config.input_type == "image":
+            segmented_zdiscs["particle"] = np.arange(len(segmented_zdiscs))
+            tracked_zdiscs = segmented_zdiscs
+        else:
+            num_frames = len(segmented_zdiscs["frame"].unique())
+            t = tp.link_df(
+                segmented_zdiscs,
+                search_range=self.config.tp_depth,
+                memory=num_frames,
+            )
+            tracked_zdiscs = tp.filter_stubs(t, 2).reset_index(drop=True)
+            if not self.config.skip_merge:
+                tracked_zdiscs = self._merge_tracked_zdiscs(tracked_zdiscs)
+        if self.config.save_output:
+            self.save_data(tracked_zdiscs, "tracked_zdiscs")
 
-        # Otherwise, fall back to segmentation
-        detected_zdiscs = self.zdisc_segmentation(**kwargs)
-        return self.zdisc_tracking(segmented_zdiscs=detected_zdiscs, **kwargs)
+        return tracked_zdiscs
 
     #############################################################
     #                    Sarcomere Detection                    #
@@ -646,39 +686,48 @@ class SarcGraph:
         :func:`sarcgraph.sg.SarcGraph.zdisc_segmentation`
         :func:`sarcgraph.sg.SarcGraph.zdisc_tracking`
         """
-        self._update_config(**kwargs)
-
-        tracked_zdiscs = kwargs.get("tracked_zdiscs")
-
-        # Validate tracked_zdiscs if provided
-        if tracked_zdiscs is not None:
-            required_columns = {
-                "frame",
-                "x",
-                "y",
-                "p1_x",
-                "p1_y",
-                "p2_x",
-                "p2_y",
-                "particle",
-            }
-            if (
-                not isinstance(tracked_zdiscs, pd.DataFrame)
-                or tracked_zdiscs.empty
-                or not required_columns.issubset(tracked_zdiscs.columns)
-            ):
-                raise ValueError(
-                    "Provided 'segmented_zdiscs' DataFrame is not in the "
-                    "correct format. The DataFrame must be non-empty and "
-                    "include the following columns: 'frame', 'x', 'y', 'p1_x',"
-                    " 'p1_y', 'p2_x', 'p2_y', 'particle'."
-                )
+        # Extract specific kwargs for input data
+        inputs_dict, kwargs = self._pop_kwargs("tracked_zdiscs", **kwargs)
+        tracked_zdiscs = inputs_dict["tracked_zdiscs"]
 
         if tracked_zdiscs is None:
             tracked_zdiscs = self.zdisc_tracking(**kwargs)
             return self.sarcomere_detection(
                 tracked_zdiscs=tracked_zdiscs, **kwargs
             )
+
+        # Validate segmented_zdiscs if provided
+        required_columns = {
+            "frame",
+            "x",
+            "y",
+            "p1_x",
+            "p1_y",
+            "p2_x",
+            "p2_y",
+            "particle",
+        }
+        if (
+            not isinstance(tracked_zdiscs, pd.DataFrame)
+            or tracked_zdiscs.empty
+            or not required_columns.issubset(tracked_zdiscs.columns)
+        ):
+            raise ValueError(
+                "Provided 'tracked_zdiscs' DataFrame is not in the correct "
+                "format. The DataFrame must be non-empty and include at least "
+                "the following columns: 'frame', 'x', 'y', 'p1_x', 'p1_y', "
+                "'p2_x', 'p2_y', 'particle'."
+            )
+
+        _, kwargs = self._pop_kwargs(
+            "input_file",
+            "raw_frames",
+            "filtered_frames",
+            "segmented_zdiscs",
+            **kwargs,
+        )
+
+        self._update_config(**kwargs)
 
         zdiscs_clusters = (
             tracked_zdiscs.groupby("particle")
@@ -820,7 +869,7 @@ class SarcGraph:
                             pass
                         else:
                             v2, l2 = self._sarc_vector(
-                                G, neighbor, far_neighbor
+                                G, far_neighbor, neighbor
                             )
                             sum_scores = self._sarc_score(v1, v2, l1, l2)
                             score = np.max((score, sum_scores))
@@ -855,7 +904,7 @@ class SarcGraph:
         tuple
             The vector connecting node1 to node2 and its length.
         """
-        sarc = G.nodes[node1]["pos"] - G.nodes[node2]["pos"]
+        sarc = G.nodes[node2]["pos"] - G.nodes[node1]["pos"]
         length = np.linalg.norm(sarc)
         return sarc, length
 
@@ -905,7 +954,7 @@ class SarcGraph:
             The calculated angle score.
         """
         theta = self._sarcs_angle(v1, v2, l1, l2)
-        return np.power(1 - theta, 2) if theta >= 1 else 0
+        return np.power(theta - 1, 2) if theta >= 1 else 0
 
     def _sarc_score(self, v1, v2, l1, l2):
         """

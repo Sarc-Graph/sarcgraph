@@ -58,8 +58,8 @@ class Config:
     _input_type: str = field(default="video", init=False)
     _save_output: bool = field(default=True, init=False)
     _sigma: float = field(default=1.0, init=False)
-    _zdisc_min_length: int = field(default=15, init=False)
-    _zdisc_max_length: int = field(default=50, init=False)
+    _zdisc_min_length: int = field(default=10, init=False)
+    _zdisc_max_length: int = field(default=100, init=False)
     _full_track_ratio: float = field(default=0.75, init=False)
     _tp_depth: int = field(default=4, init=False)
     _skip_merge: bool = field(default=False, init=False)
@@ -207,7 +207,7 @@ class Config:
     def num_neighbors(self, value: int):
         if not isinstance(value, int):
             raise TypeError("num_neighbors must be an integer")
-        if value <= 1:
+        if value < 1:
             raise ValueError("num_neighbors must be greater than 1")
         self._num_neighbors = value
 
@@ -293,8 +293,10 @@ class Config:
     def angle_threshold(self, value: float):
         if not isinstance(value, float):
             raise TypeError("angle_threshold must be a float")
-        if value <= 1.0:
-            raise ValueError("angle_threshold must be greater than 1.0")
+        if value < 1.0:
+            raise ValueError(
+                "angle_threshold must be greater than or equal to 1.0"
+            )
         self._angle_threshold = value
 
     def print(self):

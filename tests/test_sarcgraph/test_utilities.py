@@ -1,119 +1,130 @@
 import pytest
 import numpy as np
 import pandas as pd
-import os
+from sarcgraph import SarcGraph
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
-from sarcgraph.sg import SarcGraph
-
-sg_vid = SarcGraph("test", "video")
-sg_img = SarcGraph("test", "image")
-
-
-def test_output_dir_not_string():
-    with pytest.raises(TypeError):
-        SarcGraph(output_dir=1)
+IMAGE_PATH = "samples/sample_4.png"
+TIFF_IMAGE_PATH = "samples/sample_vertical.tif"
+VIDEO_PATH = "samples/sample_0.avi"
+TIFF_VIDEO_PATH = "samples/sample_6.tif"
 
 
-def test_wrong_file_type():
-    with pytest.raises(ValueError):
-        SarcGraph(file_type="Image")
+@pytest.fixture
+def sg():
+    with TemporaryDirectory() as tmpdirname:
+        sg = SarcGraph(output_dir=tmpdirname)
+        yield sg
 
 
-def test_video_loader_avi():
-    frames = sg_vid._to_gray(sg_vid._data_loader("samples/sample_0.avi"))
-    assert frames.shape == (80, 368, 368, 1)
+def test_load_data_valid_image(sg):
+    sg.config.input_type = "image"
+    data = sg.load_data(IMAGE_PATH)
+    assert isinstance(data, np.ndarray) and data.ndim == 2
 
 
-def test_video_loader_tif():
-    frames = sg_vid._to_gray(sg_vid._data_loader("samples/sample_6.tif"))
-    assert frames.shape == (30, 512, 512, 1)
+def test_load_data_valid_tiff_image(sg):
+    sg.config.input_type = "image"
+    data = sg.load_data(TIFF_IMAGE_PATH)
+    assert isinstance(data, np.ndarray) and data.ndim == 2
 
 
-def test_image_loader():
-    frame = sg_img._to_gray(sg_img._data_loader("samples/sample_5.png"))
-    assert frame.shape == (1, 368, 368, 1)
-
-
-def test_video_load_as_image():
-    with pytest.raises(
-        ValueError,
-        match=(
-            "Failed to load video correctly! Manually load the video into a "
-            "numpy array and input to the function as raw_frames."
-        ),
-    ):
-        sg_vid._to_gray(sg_vid._data_loader("samples/sample_4.png"))
-
-
-def test_image_load_as_video():
-    with pytest.raises(
-        ValueError,
-        match=(
-            "Trying to load a video while file_type='image'. Load the image "
-            "manually or change the file_type to 'video."
-        ),
-    ):
-        sg_img._to_gray(sg_img._data_loader("samples/sample_6.tif"))
-
-
-def test_save_numpy_file_name_str():
-    with pytest.raises(TypeError):
-        SarcGraph()._save_numpy([0], 0)
-
-
-def test_save_dataframe_file_name_str():
-    with pytest.raises(TypeError):
-        SarcGraph()._save_dataframe([0], 0)
-
-
-def test_save_dict():
-    test_dict = {"test": [1]}
-    with pytest.raises(TypeError):
-        sg_img._save_numpy(test_dict, "test-dict")
-    with pytest.raises(TypeError):
-        sg_img._save_dataframe(test_dict, "test-dict")
-
-
-def test_save_numpy():
-    test_np = np.ones((1, 2))
-    test_list = [1, 2]
-    file_name_np = "test-np"
-    file_name_list = "test-list"
-    sg_img._save_numpy(test_np, file_name_np)
-    sg_img._save_numpy(test_list, file_name_list)
-    assert os.path.exists(f"./{sg_img.output_dir}/{file_name_np}.npy")
-    assert os.path.exists(f"./{sg_img.output_dir}/{file_name_list}.npy")
-
-
-def test_save_dataframe():
-    test_df = pd.DataFrame.from_dict({"test": [1]})
-    file_name_df = "test-df"
-    sg_img._save_dataframe(test_df, file_name_df)
-    assert os.path.exists(f"./{sg_img.output_dir}/{file_name_df}.csv")
-
-
-def test_filtered_data_input_format():
-    data_fmt_1 = np.ones((3, 4, 4, 2, 1))
-    data_fmt_2 = np.ones((3, 4, 4, 2))
-    data_fmt_3 = np.ones((3, 4, 4))
-    data_fmt_4 = np.ones((4, 4))
-    with pytest.raises(ValueError):
-        sg_img._filter_frames(data_fmt_1)
-    with pytest.raises(ValueError):
-        sg_img._filter_frames(data_fmt_2)
-    with pytest.raises(ValueError):
-        sg_img._filter_frames(data_fmt_4)
-    assert sg_img._filter_frames(data_fmt_3).shape == data_fmt_3.shape
-
-
-def test_filtered_data_output():
-    test_data = np.zeros((2, 65, 65))
-    test_data[0, :, 32] = 1
-    test_data[1, 32, :] = 1
-    filtered_data = sg_img._filter_frames(test_data)
-    assert np.array_equal(
-        np.argmax(filtered_data[0], axis=1), 32 * np.ones(65)
+def test_load_data_valid_video(sg):
+    sg.config.input_type = "video"
+    data = sg.load_data(VIDEO_PATH)
+    assert (
+        isinstance(data, np.ndarray) and data.ndim == 3 and data.shape[0] > 1
     )
-    assert np.array_equal(
-        np.argmax(filtered_data[1], axis=0), 32 * np.ones(65)
+
+
+def test_load_data_valid_tiff_video(sg):
+    sg.config.input_type = "video"
+    data = sg.load_data(TIFF_VIDEO_PATH)
+    assert (
+        isinstance(data, np.ndarray) and data.ndim == 3 and data.shape[0] > 1
     )
+
+
+def test_load_data_no_file_path(sg):
+    with pytest.raises(ValueError):
+        sg.load_data()
+
+
+def test_load_data_invalid_file_path(sg):
+    with pytest.raises(Exception):
+        sg.load_data("invalid_file_path")
+
+
+def test_check_validity_image(sg):
+    data = np.random.rand(100, 100)
+    assert sg._check_validity(data, "image")
+
+
+def test_check_validity_invalid_image(sg):
+    data = np.random.rand(3, 100, 100)
+    with pytest.raises(ValueError):
+        sg._check_validity(data, "image")
+
+
+def test_check_validity_video(sg):
+    data = np.random.rand(10, 100, 100)
+    assert sg._check_validity(data, "video")
+
+
+def test_check_validity_invalid_video(sg):
+    data = np.random.rand(100, 100)
+    with pytest.raises(ValueError):
+        sg._check_validity(data, "video")
+
+
+def test_save_numpy_array(sg):
+    data = np.array([1, 2, 3])
+    sg.save_data(data, "test_array")
+    assert Path(f"{sg.config.output_dir}/test_array.npy").exists()
+
+
+def test_save_list(sg):
+    data = [1, 2, 3]
+    sg.save_data(data, "test_list")
+    assert Path(f"{sg.config.output_dir}/test_list.npy").exists()
+
+
+def test_save_pandas_dataframe(sg):
+    data = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    sg.save_data(data, "test_dataframe")
+    assert Path(f"{sg.config.output_dir}/test_dataframe.csv").exists()
+
+
+def test_save_invalid_data_type(sg):
+    with pytest.raises(TypeError):
+        sg.save_data([1, 2, 3], 123)
+
+
+def test_invalid_data_type(sg):
+    with pytest.raises(TypeError):
+        sg.save_data("invalid_data_type", "test_file")
+
+
+def test_filter_frames_single_image(sg):
+    image = np.random.rand(100, 100)
+    filtered_image = sg.filter_frames(image)
+    assert filtered_image.ndim == 3
+    assert filtered_image.shape[0] == 1
+
+
+def test_filter_frames_image_stack(sg):
+    stack = np.random.rand(5, 100, 100)
+    filtered_stack = sg.filter_frames(stack)
+    assert filtered_stack.ndim == 3
+    assert filtered_stack.shape[0] == 5
+
+
+def test_filter_frames_invalid_input(sg):
+    invalid_data = np.random.rand(10)
+    with pytest.raises(ValueError):
+        sg.filter_frames(invalid_data)
+
+    invalid_data = np.random.rand(10, 10, 10, 10)
+    with pytest.raises(ValueError):
+        sg.filter_frames(invalid_data)
