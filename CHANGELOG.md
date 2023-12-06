@@ -31,7 +31,7 @@
     - `_merge_tracked_zdiscs`: Adapted to accept only tracked_zdiscs as input, with adjustments for compatibility with the new Config class.
     - `zdisc_tracking`: Minor modifications implemented for compatibility with the new input option handling mechanism. Maintains core functionality while aligning with the updated approach used in `zdisc_segmentation`.
     - `sarcomere_detection`: Enhanced to align with the dynamic keyword argument handling used in `zdisc_tracking` and `zdisc_segmentation`. This function now also accepts `tracked_zdiscs` as an input, allowing for direct sarcomere detection from pre-tracked z-disc data or following z-disc tracking as needed.
-- The `SarcGraph` class as well as `SarcGraphTools` and `Config` classes can now be directly imported with a simplified import statement, enhancing the usability of the package. For example, users can now use `from sarcgraph import SarcGraph` instead of the longer `from sarcgraph.sg import SarcGraph`.
+- The `SarcGraph` and `SarcGraphTools` classes can now be directly imported with a simplified import statement, enhancing the usability of the package. For example, users can now use `from sarcgraph import SarcGraph` instead of the longer `from sarcgraph.sg import SarcGraph`.
 
 ### Deprecated
 - **sg.py**:
