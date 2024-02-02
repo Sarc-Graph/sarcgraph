@@ -336,7 +336,7 @@ class SarcGraph:
     def _validate_contours(
         self, contours: List[np.ndarray]
     ) -> List[np.ndarray]:
-        """Validates contours based on their length.
+        """Validates contours based on their length and ensure they are closed.
 
         Parameters
         ----------
@@ -346,10 +346,12 @@ class SarcGraph:
         Returns
         -------
         List[np.ndarray]
-            List of numpy arrays of valid contours based on length criteria.
+            List of numpy arrays of valid contours.
         """
         valid_contours = []
         for contour in contours:
+            if not np.allclose(contour[0], contour[-1]):
+                continue
             if (
                 self.config.zdisc_min_length <= len(contour)
                 and len(contour) <= self.config.zdisc_max_length
@@ -857,12 +859,13 @@ class SarcGraph:
         c_avg_length = self.config.coeff_avg_length
         l_avg = self.config.avg_sarc_length
         l_max = self.config.max_sarc_length
+        l_min = self.config.min_sarc_length
         edges_attr_dict = {}
         for node in range(G.number_of_nodes()):
             for neighbor in G.neighbors(node):
                 score = 0
                 v1, l1 = self._sarc_vector(G, node, neighbor)
-                if l1 <= l_max:
+                if l1 <= l_max and l1 >= l_min:
                     avg_length_score = np.exp(-np.pi * (1 - l1 / l_avg) ** 2)
                     for far_neighbor in G.neighbors(neighbor):
                         if far_neighbor in [node, neighbor]:
@@ -1131,6 +1134,7 @@ class SarcGraph:
         sarc["width"] = (width1 + width2) / 2
         angle = np.arctan2(sarc.x_p2 - sarc.x_p1, sarc.y_p2 - sarc.y_p1)
         angle[angle < 0] += np.pi
+        angle = np.pi - angle
         sarc["angle"] = angle
         sarc = sarc[
             [

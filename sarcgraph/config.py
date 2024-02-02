@@ -35,6 +35,8 @@ class Config:
     :ivar avg_sarc_length: Estimated average sarcomere length. Defaults to
     15.0.
     :type avg_sarc_length: float
+    :ivar min_sarc_length: Minimum allowed sarcomere length. Defaults to 10.0.
+    :type min_sarc_length: float
     :ivar max_sarc_length: Maximum allowed sarcomere length. Defaults to 30.0.
     :type max_sarc_length: float
     :ivar coeff_avg_length: Sarcomere scoring coefficient for average length
@@ -65,6 +67,7 @@ class Config:
     _skip_merge: bool = field(default=False, init=False)
     _num_neighbors: int = field(default=3, init=False)
     _avg_sarc_length: float = field(default=15.0, init=False)
+    _min_sarc_length: float = field(default=10.0, init=False)
     _max_sarc_length: float = field(default=30.0, init=False)
     _coeff_avg_length: float = field(default=1.0, init=False)
     _coeff_neighbor_length: float = field(default=1.0, init=False)
@@ -86,6 +89,7 @@ class Config:
         self.skip_merge = self._skip_merge
         self.num_neighbors = self._num_neighbors
         self.avg_sarc_length = self._avg_sarc_length
+        self.min_sarc_length = self._min_sarc_length
         self.max_sarc_length = self._max_sarc_length
         self.coeff_avg_length = self._coeff_avg_length
         self.coeff_neighbor_length = self._coeff_neighbor_length
@@ -222,6 +226,20 @@ class Config:
         if value <= 0.0:
             raise ValueError("avg_sarc_length must be greater than 0.0")
         self._avg_sarc_length = value
+
+    @property
+    def min_sarc_length(self) -> float:
+        return self._min_sarc_length
+
+    @min_sarc_length.setter
+    def min_sarc_length(self, value: float):
+        if not isinstance(value, float):
+            raise TypeError("min_sarc_length must be a float")
+        if value >= self.avg_sarc_length:
+            raise ValueError(
+                "min_sarc_length must be less than " "avg_sarc_length"
+            )
+        self._min_sarc_length = value
 
     @property
     def max_sarc_length(self) -> float:
