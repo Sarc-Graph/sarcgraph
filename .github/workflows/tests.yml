@@ -2,7 +2,7 @@ name: Tests
 on:
   push:
     branches:
-      - main
+      - '*'
     paths:
       - '**.py'
       - '**.yml'
@@ -12,6 +12,7 @@ on:
       - main
     paths:
       - '**.py'
+  workflow_dispatch:
 
 jobs:
   test:
