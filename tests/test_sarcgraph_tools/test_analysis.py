@@ -52,7 +52,7 @@ def test_compute_metrics():
 
 def test_compute_ts_params():
     ts_params = sg_tools.analysis.compute_ts_params()
-    assert type(ts_params) == pd.DataFrame
+    assert isinstance(ts_params, pd.DataFrame)
 
 
 def test_create_spatial_graph():
