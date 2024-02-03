@@ -915,14 +915,18 @@ class SarcGraphTools:
 
             # process the video frame by frame - no tracking
             sg_video = SarcGraph(output_dir=self.sg_tools.input_dir)
-            segmented_zdiscs = sg_video.zdisc_segmentation(input_file=file_path)
+            segmented_zdiscs = sg_video.zdisc_segmentation(
+                input_file=file_path
+            )
 
             length_all_frames = []
             width_all_frames = []
             angle_all_frames = []
             median_length_all_frames = []
             sarc_num_all_frames = []
-            sg_image = SarcGraph(output_dir=self.sg_tools.input_dir, input_type="image")
+            sg_image = SarcGraph(
+                output_dir=self.sg_tools.input_dir, input_type="image"
+            )
             for frame in range(start_frame, stop_frame):
                 segmented_zdiscs_frame = segmented_zdiscs.loc[
                     segmented_zdiscs.frame == frame
@@ -1462,9 +1466,7 @@ class SarcGraphTools:
             df = pd.DataFrame(data.T, columns=cols)
 
             if self.sg_tools.save_results:
-                df.to_csv(
-                    f"{self.sg_tools.output_dir}/timeseries_params.csv"
-                )
+                df.to_csv(f"{self.sg_tools.output_dir}/timeseries_params.csv")
 
             return df
 
@@ -1493,9 +1495,7 @@ class SarcGraphTools:
                         "either file_path or "
                         + "tracked_zdiscs should be specified."
                     )
-                tracked_zdiscs = sg_video.zdisc_tracking(
-                    input_file=file_path
-                )
+                tracked_zdiscs = sg_video.zdisc_tracking(input_file=file_path)
 
             # initiate the graph:
             G = nx.Graph()

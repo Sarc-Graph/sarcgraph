@@ -3,6 +3,7 @@
 # import pandas as pd
 import os
 
+
 def test_zdiscs_and_sarcs(sg_tools):
     sg_tools.visualization.zdiscs_and_sarcs()
     file_name = f"{sg_tools.output_dir}/zdiscs-sarcs-frame-0"

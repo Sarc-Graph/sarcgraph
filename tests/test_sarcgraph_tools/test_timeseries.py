@@ -3,6 +3,7 @@ import numpy as np
 
 from sarcgraph import SarcGraphTools
 
+
 def test_sg_tools_input_dir():
     with pytest.raises(FileNotFoundError):
         SarcGraphTools("worng-input")

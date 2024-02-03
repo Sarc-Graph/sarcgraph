@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 
+
 def test_sampler(sg_tools):
     s1 = np.array([1, 1, 1, 1])
     s2 = np.array([1, 2, 3, 4])
