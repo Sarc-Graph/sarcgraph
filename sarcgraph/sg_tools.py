@@ -189,7 +189,7 @@ class SarcGraphTools:
             sarcomeres = self._sarcomeres_length_normalize(sarcomeres)
             if self.sg_tools.save_results:
                 sarcomeres.to_csv(
-                    f"./{self.sg_tools.output_dir}/sarcomeres_gpr.csv"
+                    f"{self.sg_tools.output_dir}/sarcomeres_gpr.csv"
                 )
             return sarcomeres
 
@@ -220,7 +220,7 @@ class SarcGraphTools:
 
             ax = plt.axes()
             ax.set_aspect("equal")
-            ax.imshow(raw_frame[:, :, 0], cmap=plt.cm.gray)
+            ax.imshow(raw_frame[:, :], cmap=plt.cm.gray)
             ax.set_title(
                 f"{len(contours)} z-disks and {len(sarcs_x)} sarcomeres "
                 f"in frame {frame_num+1}"
@@ -278,7 +278,7 @@ class SarcGraphTools:
             Path("tmp").mkdir(parents=True, exist_ok=True)
             for frame_num in range(num_frames):
                 indices = frames == frame_num
-                raw_frame = raw_frames[frame_num, :, :, 0]
+                raw_frame = raw_frames[frame_num, :, :]
 
                 plt.figure()
                 plt.imshow(raw_frame, cmap=plt.cm.gray)
@@ -532,7 +532,7 @@ class SarcGraphTools:
             if no_anim:
                 return np.array([lambda_1, lambda_2])
 
-            raw_frames = self.sg_tools._load_raw_frames()[:, :, :, 0]
+            raw_frames = self.sg_tools._load_raw_frames()
             OOP_all = self.sg_tools._load_recovered_info("OOP")
             OOP_vec_all = self.sg_tools._load_recovered_info("OOP_vector")
 
@@ -872,14 +872,14 @@ class SarcGraphTools:
                 else:
                     plt.plot(pos[0], pos[1], ".", color=color, ms=5)
 
-            output_file = f"./{self.sg_tools.output_dir}/spatial-graph"
+            output_file = f"{self.sg_tools.output_dir}/spatial-graph"
             plt.savefig(
-                f"./{output_file}.png",
+                f"{output_file}.png",
                 dpi=self.sg_tools.quality,
                 bbox_inches="tight",
             )
             if self.sg_tools.include_eps:
-                plt.savefig(f"./{output_file}.eps")
+                plt.savefig(f"{output_file}.eps")
 
             plt.show()
 
@@ -914,15 +914,15 @@ class SarcGraphTools:
             num_tracked = sarcomeres.sarc_id.max() + 1
 
             # process the video frame by frame - no tracking
-            sg_video = SarcGraph(self.sg_tools.input_dir)
-            segmented_zdiscs = sg_video.zdisc_segmentation(file_path)
+            sg_video = SarcGraph(output_dir=self.sg_tools.input_dir)
+            segmented_zdiscs = sg_video.zdisc_segmentation(input_file=file_path)
 
             length_all_frames = []
             width_all_frames = []
             angle_all_frames = []
             median_length_all_frames = []
             sarc_num_all_frames = []
-            sg_image = SarcGraph(self.sg_tools.input_dir, "image")
+            sg_image = SarcGraph(output_dir=self.sg_tools.input_dir, input_type="image")
             for frame in range(start_frame, stop_frame):
                 segmented_zdiscs_frame = segmented_zdiscs.loc[
                     segmented_zdiscs.frame == frame
@@ -1463,7 +1463,7 @@ class SarcGraphTools:
 
             if self.sg_tools.save_results:
                 df.to_csv(
-                    f"./{self.sg_tools.output_dir}/timeseries_params.csv"
+                    f"{self.sg_tools.output_dir}/timeseries_params.csv"
                 )
 
             return df
@@ -1484,7 +1484,7 @@ class SarcGraphTools:
             tracked_zdiscs : pd.DataFrame
                 Information of all detected and tracked zdiscs in every frame.
             """
-            sg_video = SarcGraph(file_type="video")
+            sg_video = SarcGraph(input_type="video", save_output=False)
 
             # load tracked zdiscs:
             if tracked_zdiscs is None:
@@ -1494,7 +1494,7 @@ class SarcGraphTools:
                         + "tracked_zdiscs should be specified."
                     )
                 tracked_zdiscs = sg_video.zdisc_tracking(
-                    file_path, save_output=False
+                    input_file=file_path
                 )
 
             # initiate the graph:
@@ -1512,7 +1512,7 @@ class SarcGraphTools:
                 pos.update({particle: (y_pos, -x_pos)})
 
             # SarcGraph object that work with single frames
-            sg_image = SarcGraph(file_type="image")
+            sg_image = SarcGraph(input_type="image", save_output=False)
 
             # frame by frame sarcomere detection, add graph edges and weigts:
             for frame in tracked_zdiscs.frame.unique():
@@ -1521,7 +1521,7 @@ class SarcGraphTools:
                 ]
                 tracked_zdiscs_frame.loc[:]["frame"] = 0
                 _, myofibrils = sg_image.sarcomere_detection(
-                    tracked_zdiscs=tracked_zdiscs_frame, save_output=False
+                    tracked_zdiscs=tracked_zdiscs_frame,
                 )
                 for myo in myofibrils:
                     for edge in myo.edges:
@@ -1569,9 +1569,9 @@ class SarcGraphTools:
 
     def _load_raw_frames(self):
         try:
-            raw_frames = np.load(f"{self.input_dir}/raw-frames.npy")
+            raw_frames = np.load(f"{self.input_dir}/raw_frames.npy")
         except Exception:
-            self._raise_sarcgraph_data_not_found("raw-frames.npy")
+            self._raise_sarcgraph_data_not_found("raw_frames.npy")
         return raw_frames
 
     def _load_contours(self):
