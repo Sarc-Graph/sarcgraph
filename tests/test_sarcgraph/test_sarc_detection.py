@@ -174,7 +174,7 @@ def test_process_sarc(sg):
     ]
     assert processed_sarc.length.values.tolist() == [np.sqrt(2)] * 3
     assert processed_sarc.width.values.tolist() == [np.sqrt(2)] * 3
-    assert processed_sarc.angle.values.tolist() == [np.pi / 4] * 3
+    assert processed_sarc.angle.values.tolist() == [3 * np.pi / 4] * 3
 
 
 def test_process_sarcomeres(sg):
@@ -211,7 +211,7 @@ def test_process_sarcomeres(sg):
     ]
     assert processed_sarcs.dropna().length.values.tolist() == [np.sqrt(2)]
     assert processed_sarcs.dropna().width.values.tolist() == [1]
-    assert processed_sarcs.dropna().angle.values.tolist() == [np.pi / 4]
+    assert processed_sarcs.dropna().angle.values.tolist() == [3 * np.pi / 4]
     assert processed_sarcs.zdiscs.values.tolist() == ["1,2", "1,2"]
 
 
