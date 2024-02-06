@@ -778,7 +778,7 @@ class SarcGraphTools:
             :func:`sarcgraph.sg_tools.SarcGraphTools.Analysis.create_spatial_graph`
             """
             with open(
-                f"self.sg_tools.output_dir}/spatial-graph.gpickle", 'rb'
+                f"{self.sg_tools.output_dir}/spatial-graph.gpickle", 'rb'
             ) as f:
                 G = pickle.load(f)
             # G = nx.read_gpickle(
