@@ -51,4 +51,4 @@ def test_compute_ts_params(sg_tools):
 
 def test_create_spatial_graph(sg_tools):
     sg_tools.analysis.create_spatial_graph("samples/sample_0.avi")
-    assert os.path.exists(f"{sg_tools.output_dir}/spatial-graph.pkl")
+    assert os.path.exists(f"{sg_tools.output_dir}/spatial-graph.gpickle")
