@@ -777,9 +777,13 @@ class SarcGraphTools:
             --------
             :func:`sarcgraph.sg_tools.SarcGraphTools.Analysis.create_spatial_graph`
             """
-            G = nx.read_gpickle(
-                f"{self.sg_tools.output_dir}/spatial-graph.pkl"
-            )
+            with open(
+                f"self.sg_tools.output_dir}/spatial-graph.gpickle", 'rb'
+            ) as f:
+                G = pickle.load(f)
+            # G = nx.read_gpickle(
+            #     f"{self.sg_tools.output_dir}/spatial-graph.pkl"
+            # )
 
             with open(
                 f"{self.sg_tools.output_dir}/spatial-graph-pos.pkl", "rb"
@@ -1546,7 +1550,9 @@ class SarcGraphTools:
 
             # save the graph
             output_file = f"{self.sg_tools.output_dir}/spatial-graph"
-            nx.write_gpickle(G, path=f"{output_file}.pkl")
+            with open(f"{output_file}.gpickle", 'wb') as f:
+                pickle.dump(G, f, pickle.HIGHEST_PROTOCOL)
+            # nx.write_gpickle(G, path=f"{output_file}.pkl")
             with open(f"{output_file}-pos.pkl", "wb") as file:
                 pickle.dump(pos, file)
 
