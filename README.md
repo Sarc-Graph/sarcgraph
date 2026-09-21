@@ -211,3 +211,4 @@ To validate our methods and ensure correct implementation, we generated challeng
 For information about this software, please get in touch with [Saeed Mohammadzadeh](mailto:saeedmhz@bu.edu) or [Emma Lejeune](mailto:elejeune@bu.edu).
 
 ## Acknowledgements <a name="acknowledge"></a>
+This work was funded in by the American Heart Association Career Development Award 856354 and the NSF CELL-MET Engineering Research Center EEC-1647837. 
